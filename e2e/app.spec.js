@@ -43,7 +43,7 @@ async function startStudent(page, role, stage = 1, round = 1, index = 0) {
       exact: false,
     })
     .click();
-  await page.locator('[name="stage"]').selectOption(String(stage));
+  await page.locator(`[data-action="choose-stage"][data-stage="${stage}"]`).click();
   await expect(page.locator('[name="round"]')).toHaveCount(0);
   if (role === "patient" && stage !== 1)
     await page
@@ -454,7 +454,7 @@ test("invalid case codes and unavailable or corrupt teacher storage fail safely"
   await page.goto("./");
   await page.getByRole("button", { name: "我是病人", exact: false }).click();
   await expect(page.locator('[name="code"]')).toHaveCount(0);
-  await page.locator('[name="stage"]').selectOption("2");
+  await page.locator('[data-action="choose-stage"][data-stage="2"]').click();
   await page
     .getByLabel("教師提供的病例碼", { exact: true })
     .fill("123456789012");
@@ -532,7 +532,7 @@ test("stage-one random cases persist on refresh; next patient draws and round se
   await snap(page, info, "stage-one-patient");
   await page.getByRole("button", { name: "更換階段" }).click();
   await expect(page.locator('[name="round"]')).toHaveCount(0);
-  await page.locator('[name="stage"]').selectOption("2");
+  await page.locator('[data-action="choose-stage"][data-stage="2"]').click();
   await page.getByLabel("教師提供的病例碼", { exact: true }).fill(makeCode(3, 2, 5));
   await page.getByRole("button", { name: "載入病例", exact: true }).click();
   await page.getByRole("button", { name: "確認", exact: true }).click();
@@ -669,7 +669,7 @@ test("new cases answer source-based questions, preserve unknown facts and condit
     "insufficient",
   );
   await expect(page.locator('[data-candidate="cold"]')).toContainText(
-    "資訊不足以比較",
+    "繼續調查",
   );
   await page.locator('[data-id="periodCramps"][data-value="true"]').click();
   await expect(
@@ -682,4 +682,20 @@ test("new cases answer source-based questions, preserve unknown facts and condit
   await layout(page);
   await axe(page);
   await snap(page, info, "four-state-candidates");
+});
+
+test("conjunctivitis remains among candidates when reported fever, vomiting, diarrhea and belly pain are absent", async ({ page }) => {
+  await startStudent(page, "doctor", 1);
+  if ((await page.locator(".candidate-details").getAttribute("open")) === null)
+    await page.locator(".candidate-details summary").click();
+  for (const symptom of ["fever", "vomit", "diarrhea", "belly"])
+    await page.locator(`[data-symptom-card="${symptom}"] [data-value="false"]`).click();
+  await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
+    .toHaveAttribute("data-comparison", "consistent");
+  await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
+    .toContainText("線索吻合");
+  await page.locator('[data-symptom-card="redEye"] [data-value="true"]').click();
+  await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
+    .toHaveAttribute("data-comparison", "consistent");
+  await expect(page.locator(".candidate-disclaimer")).toHaveCount(0);
 });

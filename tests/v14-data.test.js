@@ -25,9 +25,9 @@ const expected = {
   cough: "??N??N",
   itch: "NN????",
   nausea: "?NNNN?",
-  vomit: "??NNN?",
-  diarrhea: "??N?N?",
-  belly: "??N?Y?",
+  vomit: "N?NNN?",
+  diarrhea: "N?N?N?",
+  belly: "N?N?Y?",
   frequent: "????N?",
   burning: "????N?",
   lower: "????Y?",
@@ -244,4 +244,14 @@ test("new-case best responses use source facts, vary position, and are not alway
       assert.ok(!best.text.includes(candidate.disease));
   }
   assert.ok(positions.size > 1);
+});
+
+test("C07 conjunctivitis has explicit negative gastro symptoms and survives elimination", () => {
+  const c07 = cases.find((c) => c.id === "viral_conjunctivitis");
+  const records = { fever: false, vomit: false, diarrhea: false, belly: false };
+  assert.equal(comparison(c07.evidence, records), "consistent");
+  assert.ok(matches(records).includes(c07.id));
+  assert.equal(comparison(c07.evidence, { ...records, redEye: true }), "consistent");
+  assert.equal(comparison(c07.evidence, { ...records, redEye: false }), "conflict");
+  assert.match(c07.notes[4].text, /沒有嘔吐、腹瀉或腹痛/);
 });

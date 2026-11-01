@@ -13,8 +13,8 @@ export function teacherView(
 ) {
   const current =
     book.classes.find((entry) => entry.id === classId) || book.classes[0];
-  return `<div class="teacher-shell"><div class="teacher-title"><div><span class="eyebrow">正式競賽紀錄・教師手動登記</span><h1 id="screen-title" tabindex="-1">教室紀錄中心</h1><p>有效提問與疾病猜測各記一次；未知或不適用可判定無效、不登記，已記錄可減一或復原。猜錯繼續累積。</p></div><div class="teacher-actions">${b("疾病代碼查詢", "t-code-lookup")}${b("鎖定畫面", "t-lock")}${b("登出", "t-logout", { kind: "quiet" })}</div></div>
-  <div class="storage-status" role="status">✓ 已保存於這台裝置。無雲端同步；清除瀏覽器資料會遺失，請定期備份。</div><p id="teacher-error" class="form-error" role="alert"></p>
+  return `<div class="teacher-shell"><div class="teacher-title"><div><span class="eyebrow">正式競賽紀錄・教師手動登記</span><h1 id="screen-title" tabindex="-1">教室紀錄中心</h1></div><div class="teacher-actions">${b("疾病代碼查詢", "t-code-lookup")}${b("鎖定畫面", "t-lock")}${b("登出", "t-logout", { kind: "quiet" })}</div></div>
+  <div class="storage-status" role="status">✓ 紀錄已儲存</div><p id="teacher-error" class="form-error" role="alert"></p>
   <section class="panel teacher-controls"><div class="class-selector-row"><label>目前班級<select id="class-select" ${book.classes.length ? "" : "disabled"}>${book.classes.map((entry) => `<option value="${entry.id}" ${entry.id === current?.id ? "selected" : ""}>${e(entry.name)} 班</option>`).join("")}</select></label><details class="teacher-tool-details" ${current?.groups.length ? "" : "open"}><summary>班級與備份工具</summary><div class="tools-inner"><form id="class-form"><label>新增班級<input name="className" maxlength="30" required placeholder="例如 815" autocomplete="off"></label><button class="button secondary" type="submit">新增班級</button></form><div class="backup-controls">${b("匯出 CSV", "t-csv")}${b("JSON 備份", "t-backup")}<label class="button secondary file-label">匯入 JSON<input id="import-file" type="file" accept=".json,application/json"></label></div></div></details>${b("復原最近操作", "t-undo", { disabled: !canUndo, extra: `title="${e(undoLabel)}"` })}</div></section>
   ${
     current
@@ -22,7 +22,7 @@ export function teacherView(
     ${current.groups.length ? (section === "scores" ? scoreSheet(current, stage) : plans(current, stage)) : `<section class="panel empty-state"><h2>先建立第一組</h2><p>每組五位學生，只需要座號，不必輸入姓名。新增後會自動安排每階段五份不同病例。</p>${b("新增第一組", "t-add-group", { kind: "primary" })}</section>`}`
       : `<section class="panel empty-state"><h2>從一個班級開始</h2><p>在上方新增班級，再建立組別。不同班級的成績會分開保存。</p></section>`
   }
-  ${notice("固定密碼僅供簡易教室管理，不是伺服器身分驗證。只在教師裝置保存座號與成績，不會上傳至 GitHub。")}
+  
   </div>`;
 }
 function scoreSheet(entry, stage) {
@@ -37,7 +37,7 @@ function scoreSheet(entry, stage) {
     )
     .join(
       "",
-    )}</section><section class="panel ranking-panel"><div class="section-heading"><h2>第${stage === 1 ? "一" : "二"}階段排名</h2><span class="subtle-badge">完成 5 份才列正式名次</span></div><ol data-ranking>${rankingList(entry, stage)}</ol><p class="muted small">排名涵蓋全班，不受搜尋影響。同提問數並列，採競賽名次（例如 1、1、3）。第三階段不納入排名。</p></section>`;
+    )}</section><section class="panel ranking-panel"><div class="section-heading"><h2>第${stage === 1 ? "一" : "二"}階段排名</h2><span class="subtle-badge">完成 5 份才列正式名次</span></div><ol data-ranking>${rankingList(entry, stage)}</ol></section>`;
 }
 function counter(group, stage, field, label) {
   const value = group.scores[stage][field];
@@ -53,7 +53,7 @@ export function rankingList(entry, stage) {
 }
 function plans(entry, stage) {
   if (stage === 1)
-    return `<section class="plan-area"><div class="notice"><p>第一階段由病人平板在開始新回合時，從現有病例庫等機率隨機抽取。各回合可能抽到相同病例；不分配病例碼，也不向教師或醫師自動揭露答案。重新整理沿用該分頁的同回合病例。</p></div>${[
+    return `<section class="plan-area">${[
       ...entry.groups,
     ]
       .sort((a, b) => a.number - b.number)
@@ -73,7 +73,7 @@ function plans(entry, stage) {
       )
       .join("")}</section>`;
 
-  return `<section class="plan-area"><div class="notice"><p>每組本階段的五份病例不重複。請私下把「病例碼」交給當回合病人；醫師不需要輸入，也不要讓醫師觀看這張安排表。${stage === 3 ? "本階段僅練習，不建立競賽成績。" : ""}</p></div>${[
+  return `<section class="plan-area"><p class="plan-short-hint">將病例碼交給對應病人。</p>${[
     ...entry.groups,
   ]
     .sort((a, b) => a.number - b.number)
@@ -100,5 +100,5 @@ export function groupForm(group) {
 }
 
 export function codeLookupForm() {
-  return `<h2 id="dialog-title">疾病代碼查詢</h2><p>這是教材內部的四位數識別碼，不是國際疾病分類碼或醫療診斷代碼。</p><form id="code-lookup-form"><label>四位數疾病代碼<input name="diseaseCode" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="例如 4726"></label><div class="dialog-actions">${b("關閉", "t-cancel")}<button type="submit" class="button primary">查詢</button></div></form><div id="code-lookup-result" class="code-lookup-result" role="status" aria-live="polite"></div>`;
+  return `<h2 id="dialog-title">疾病代碼查詢</h2><form id="code-lookup-form"><label>四位數疾病代碼<input name="diseaseCode" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="例如 4726"></label><div class="dialog-actions">${b("關閉", "t-cancel")}<button type="submit" class="button primary">查詢</button></div></form><div id="code-lookup-result" class="code-lookup-result" role="status" aria-live="polite"></div>`;
 }

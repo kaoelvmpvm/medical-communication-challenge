@@ -2,6 +2,7 @@ import "./style.css";
 import "./teacher.css";
 import "./art.css";
 import { playUiSound } from "./ui/sound.js";
+import { isMusicEnabled, setMusicEnabled, activateMusicOnGesture } from "./ui/music.js";
 import { displayVersion } from "./data/version.js";
 import { cases, patientView } from "./data/cases.js";
 import { symptoms } from "./data/symptoms.js";
@@ -34,7 +35,7 @@ import { artPlaceholder } from "./ui/case-art.js";
 import { observeBodyMap } from "./ui/body-lines.js";
 import { TeacherApp } from "./teacher/controller.js";
 const app = document.querySelector("#app");
-app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><img class="header-logo" data-art-kind="header-logo" src="${e(portalArt.title || "")}" width="2172" height="724" alt="醫問到底！"><span class="brand-fallback" hidden>醫問到底！</span></a><div class="header-actions"><button class="button quiet" type="button" data-action="home">角色入口</button></div></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
+app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><img class="header-logo" data-art-kind="header-logo" src="${e(portalArt.title || "")}" width="2172" height="724" alt="醫問到底！"><span class="brand-fallback" hidden>醫問到底！</span></a><div class="header-actions"><button class="music-toggle" type="button" data-action="toggle-music" aria-pressed="${isMusicEnabled()}" aria-label="${isMusicEnabled() ? "關閉背景音樂" : "開啟背景音樂"}">♫ 音樂${isMusicEnabled() ? "開" : "關"}</button></div></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
 const main = document.querySelector("#main"),
   statusHost = document.querySelector("#status-host"),
   toolsHost = document.querySelector("#tools-host"),
@@ -129,18 +130,8 @@ function render({ focus = true } = {}) {
   else if (view === "student" && session) {
     const matching = matches(session.records);
     statusHost.innerHTML = studentStatus(session, matching.length);
-    const independentNotice = notice(
-      session.role === "doctor"
-        ? session.stage === 1
-          ? "輪流口頭提問，依病人的回答記錄症狀。猜測疾病也口頭提出，由教師登記成績。"
-          : session.stage === 2
-            ? "選好問題後口頭詢問，再記錄病人的回答。猜測疾病也算一次提問，由教師登記。"
-            : "先聽病人完整描述，再回述重點並補充詢問。此階段不計分。"
-        : "請依情境口頭回應醫師，保持病例內容不讓醫師看到。",
-    );
     if (session.role === "doctor") {
       main.innerHTML =
-        independentNotice +
         doctor(
           session,
           cases.map((entry) => ({
@@ -156,7 +147,6 @@ function render({ focus = true } = {}) {
         main.querySelector(".candidate-details")?.removeAttribute("open");
     } else {
       main.innerHTML =
-        independentNotice +
         (session.stage === 2
           ? patientQuestions(session, cases[session.caseIndex].id)
           : "") +
@@ -265,6 +255,30 @@ app.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || target.disabled) return;
   const action = target.dataset.action;
+  if (action === "toggle-music") {
+    const enabled = setMusicEnabled(!isMusicEnabled());
+    target.setAttribute("aria-pressed", String(enabled));
+    target.setAttribute("aria-label", enabled ? "關閉背景音樂" : "開啟背景音樂");
+    target.textContent = enabled ? "♫ 音樂開" : "♫ 音樂關";
+    if (enabled) activateMusicOnGesture();
+    announce(enabled ? "背景音樂已開啟" : "背景音樂已關閉");
+    return;
+  }
+  if (action === "choose-stage" && view === "setup") {
+    const stage = Number(target.dataset.stage);
+    if (![1, 2, 3].includes(stage)) return;
+    const input = main.querySelector('[name="stage"]');
+    input.value = String(stage);
+    main.querySelectorAll(".stage-pick").forEach((button) =>
+      button.setAttribute("aria-pressed", String(Number(button.dataset.stage) === stage)),
+    );
+    if (role === "patient") {
+      main.querySelector("#patient-loading").innerHTML = patientLoading(stage);
+      main.querySelector("#student-start").textContent = stage === 1 ? "開始回合" : "載入病例";
+    }
+    main.querySelector("#student-error").textContent = "";
+    return;
+  }
   if (action === "home") {
     if (view === "teacher") return leaveTeacher("home");
     return goHome();
@@ -435,22 +449,13 @@ app.addEventListener("submit", (event) => {
       close();
       render({ focus: false });
       modal(
-        `<h2 id="dialog-title">已提出這次猜測</h2><p>你提出「${e(cases.find((entry) => entry.id === diseaseId).disease)}」。請教師判定並登記正式提問數；猜錯可以繼續問，或清空紀錄重新整理，不會歸零提問數。</p>${b("繼續問診", "cancel", { kind: "primary" })}`,
+        `<h2 id="dialog-title">已提出這次猜測</h2><p>你提出「${e(cases.find((entry) => entry.id === diseaseId).disease)}」。猜測已送出，請繼續挑戰！</p>${b("繼續問診", "cancel", { kind: "primary" })}`,
       );
     }
   }
 });
 app.addEventListener("change", (event) => {
   if (view === "teacher") return;
-  if (event.target.name === "stage" && view === "setup" && role === "patient") {
-    main.querySelector("#patient-loading").innerHTML = patientLoading(
-      Number(event.target.value),
-    );
-    main.querySelector("#student-error").textContent = "";
-    main.querySelector("#student-start").textContent =
-      Number(event.target.value) === 1 ? "開始回合" : "載入病例";
-    return;
-  }
   if (event.target.name === "disease") {
     document.querySelector("#confirm-guess").disabled = false;
     return;
@@ -509,6 +514,7 @@ dialog.addEventListener("cancel", (event) => {
 app.addEventListener("click", (event) => {
   const control = event.target.closest("button");
   if (!control || control.disabled) return;
+  activateMusicOnGesture();
   const action = control.dataset.action || "";
   const type = action === "mark" ? "mark" : ["choose-role", "home", "change-stage", "next-patient"].includes(action) ? "navigate" : "tap";
   playUiSound(type);

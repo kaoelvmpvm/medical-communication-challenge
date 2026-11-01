@@ -4,6 +4,7 @@ export const additionalCases = [
     id: "viral_conjunctivitis",
     responses: {
       eyes: "兩眼紅紅的、會流眼淚，眼角是透明水樣分泌物，不會明顯癢或怕光，也沒有看不清楚。",
+      stomach: "沒有嘔吐、腹瀉或腹痛；目前主要是不舒服的眼睛。",
     },
     profile: {
       severity: 4,

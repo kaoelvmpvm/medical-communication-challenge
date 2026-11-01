@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { portal } from "../src/ui/portal.js";
+import { portal, setup } from "../src/ui/portal.js";
 import { isSoundEnabled, playUiSound } from "../src/ui/sound.js";
 
 test("portal removes obsolete prompts but retains role actions and the art", () => {
@@ -31,4 +31,24 @@ test("page header uses art logo, removes the audio toggle and obsolete footer ph
 test("sound is permanently enabled and safe without Web Audio", () => {
   assert.equal(isSoundEnabled(), true);
   assert.doesNotThrow(() => playUiSound("navigate"));
+});
+
+test("student stages are three selectable game buttons and medical technical copy is absent", () => {
+  const html = setup("patient", { stage: 2 });
+  assert.equal((html.match(/data-action="choose-stage"/g) || []).length, 3);
+  assert.ok(!html.includes("<select name=\"stage\""));
+  assert.match(html, /name="stage" value="2"/);
+  assert.match(html, /data-stage="2" aria-pressed="true"/);
+});
+test("music toggle is independent from always-on interaction effects", async () => {
+  const { isMusicEnabled, setMusicEnabled, activateMusicOnGesture } = await import("../src/ui/music.js");
+  const before = isMusicEnabled();
+  try {
+    assert.equal(typeof setMusicEnabled(false), "boolean");
+    assert.equal(isMusicEnabled(), false);
+    assert.doesNotThrow(() => activateMusicOnGesture());
+    assert.equal(isSoundEnabled(), true);
+  } finally {
+    setMusicEnabled(before);
+  }
 });

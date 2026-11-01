@@ -29,7 +29,7 @@ async function noOverflow(page) {
 async function patient(page, index, stage = 2) {
   await page.goto("./");
   await page.getByRole("button", { name: "我是病人", exact: true }).click();
-  await page.locator('[name="stage"]').selectOption(String(stage));
+  await page.locator(`[data-action="choose-stage"][data-stage="${stage}"]`).click();
   await page
     .getByLabel("教師提供的病例碼", { exact: true })
     .fill(makeCode(index, stage, 1));
@@ -85,6 +85,8 @@ test("supplied logo, hero and three role cards load with compact layout, keyboar
   );
   await expect(page.locator(".app-header")).not.toContainText("1.5");
   await expect(page.locator(".sound-toggle")).toHaveCount(0);
+  await expect(page.locator(".music-toggle")).toHaveCount(1);
+  await expect(page.locator(".app-header")).not.toContainText("角色入口");
   for (const text of ["開始問診", "開始描述", "進入教師紀錄"])
     await expect(page.getByText(text, { exact: true })).toBeVisible();
   const axe = await new AxeBuilder({ page })
@@ -101,7 +103,7 @@ test("supplied logo, hero and three role cards load with compact layout, keyboar
   await page.getByRole("button", { name: "返回角色入口", exact: true }).click();
   await page.getByRole("button", { name: "我是病人", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "載入這一回合的感受" }),
+    page.getByRole("heading", { name: "準備揭開身體線索" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "返回角色入口", exact: true }).click();
   await page.getByRole("button", { name: "教師專用", exact: true }).click();
