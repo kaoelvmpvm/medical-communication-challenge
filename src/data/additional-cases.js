@@ -28,7 +28,7 @@ export const additionalCases = [
       ["eyes", "眼睛沒有明顯發癢，也不怕光，看東西沒有變模糊。"],
       [
         "body",
-        "量過體溫是36.7°C，沒有流鼻水，也沒有一直打噴嚏。上課時一直想擦眼角。",
+        "量過體溫是36.7°C，沒有流鼻水、打噴嚏，也沒有嘔吐、腹瀉或腹痛。上課時一直想擦眼角。",
       ],
     ],
     guidance:
@@ -240,9 +240,9 @@ const matrix = {
   cough: "??N??N",
   itch: "NN????",
   nausea: "?NNNN?",
-  vomit: "??NNN?",
-  diarrhea: "??N?N?",
-  belly: "??N?Y?",
+  vomit: "N?NNN?",
+  diarrhea: "N?N?N?",
+  belly: "N?N?Y?",
   frequent: "????N?",
   burning: "????N?",
   lower: "????Y?",
