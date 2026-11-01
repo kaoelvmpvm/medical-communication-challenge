@@ -1,0 +1,457 @@
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { makeCode } from "../src/game/codes.js";
+import { cases } from "../src/data/cases.js";
+import { symptoms } from "../src/data/symptoms.js";
+import { STORAGE_KEY } from "../src/teacher/store.js";
+const root = "http://127.0.0.1:4173/medical-communication-challenge/";
+async function login(page) {
+  await page.goto("./");
+  await page.getByRole("button", { name: "教師專用", exact: false }).click();
+  await page.getByLabel("教師密碼", { exact: true }).fill("0709");
+  await page.getByRole("button", { name: "解鎖紀錄中心" }).click();
+  await expect(
+    page.getByRole("heading", { name: "教室紀錄中心" }),
+  ).toBeVisible();
+}
+async function openTools(page) {
+  const tools = page.locator(".teacher-tool-details");
+  if ((await tools.getAttribute("open")) === null)
+    await tools.locator("summary").click();
+}
+async function addClass(page, name) {
+  await openTools(page);
+  await page.getByLabel("新增班級", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "新增班級", exact: true }).click();
+  await expect(page.locator("#class-select")).toContainText(`${name} 班`);
+}
+async function group(page, number, seats) {
+  await page.getByRole("button", { name: "＋ 新增組別", exact: true }).click();
+  await fillGroup(page, number, seats);
+}
+async function fillGroup(page, number, seats) {
+  await page.locator('#group-form [name="number"]').fill(String(number));
+  for (let i = 0; i < 5; i++)
+    await page.locator(`#group-form [name="seat${i}"]`).fill(String(seats[i]));
+  await page.getByRole("button", { name: "儲存組別", exact: true }).click();
+}
+async function startStudent(page, role, stage = 1, round = 1, index = 0) {
+  await page.goto(root);
+  await page
+    .getByRole("button", {
+      name: role === "doctor" ? "我是醫生" : "我是病人",
+      exact: false,
+    })
+    .click();
+  await page.locator('[name="stage"]').selectOption(String(stage));
+  await page.locator('[name="round"]').selectOption(String(round));
+  if (role === "patient")
+    await page
+      .getByLabel("教師提供的病例碼", { exact: true })
+      .fill(makeCode(index, stage, round));
+  await page
+    .getByRole("button", {
+      name: role === "doctor" ? "進入醫師端" : "載入病例",
+      exact: true,
+    })
+    .click();
+}
+async function layout(page) {
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  const overlaps = await page
+    .locator(
+      ".body-note,.symptom-card,.candidate,.answer-option,.record-row,.role-entry,.body-marker",
+    )
+    .evaluateAll((elements) => {
+      const rects = elements
+        .filter((el) => el.getClientRects().length)
+        .map((el) => el.getBoundingClientRect());
+      return rects.flatMap((a, i) =>
+        rects
+          .slice(i + 1)
+          .filter(
+            (b) =>
+              Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 &&
+              Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1,
+          ),
+      );
+    });
+  expect(overlaps).toHaveLength(0);
+}
+async function axe(page) {
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(result.violations).toEqual([]);
+}
+async function snap(page, info, name) {
+  await page.evaluate(() => scrollTo(0, 0));
+  const path = info.outputPath(name + ".png");
+  await page.screenshot({ path, fullPage: true });
+  await info.attach(name, { path, contentType: "image/png" });
+}
+
+test("role entry, PIN, class/group edits, duplicate seats, delete undo and locking", async ({
+  page,
+}, info) => {
+  await page.goto("./");
+  await expect(page.locator(".role-entry")).toHaveCount(3);
+  await layout(page);
+  await axe(page);
+  await snap(page, info, "role-portal");
+  await page.getByRole("button", { name: "教師專用", exact: false }).click();
+  await expect(page.locator("#teacher-pin")).toHaveAttribute(
+    "type",
+    "password",
+  );
+  await page.locator("#teacher-pin").fill("1111");
+  await page.getByRole("button", { name: "解鎖紀錄中心" }).click();
+  await expect(page.locator("#login-error")).toContainText("密碼不正確");
+  await page.getByRole("button", { name: "清除重輸" }).click();
+  await expect(page.locator("#teacher-pin")).toHaveValue("");
+  await page.locator("#teacher-pin").fill("0709");
+  await page.getByRole("button", { name: "解鎖紀錄中心" }).click();
+  await addClass(page, "815");
+  await group(page, 1, [1, 2, 3, 4, 5]);
+  await expect(page.locator(".record-row")).toHaveCount(1);
+  await group(page, 2, [1, 6, 7, 8, 9]);
+  await expect(page.locator("#group-error")).toContainText("已分配");
+  await fillGroup(page, 2, [6, 7, 8, 9, 10]);
+  await expect(page.locator(".record-row")).toHaveCount(2);
+  await page
+    .locator(".record-row")
+    .first()
+    .getByRole("button", { name: "修改", exact: true })
+    .click();
+  await fillGroup(page, 3, [1, 2, 3, 4, 5]);
+  await expect(page.locator(".record-row").last()).toContainText("第 3 組");
+  await page.locator("#group-search").fill("3");
+  await expect(page.locator(".record-row:visible")).toHaveCount(1);
+  await expect(page.locator(".record-row:visible")).toContainText("第 3 組");
+  await page.locator("#group-search").fill("");
+  await expect(page.locator(".record-row:visible")).toHaveCount(2);
+  await addClass(page, "816");
+  await group(page, 1, [1, 2, 3, 4, 5]);
+  await expect(page.locator(".record-row")).toHaveCount(1);
+  await page.locator("#class-select").selectOption({ label: "815 班" });
+  await expect(page.locator(".record-row")).toHaveCount(2);
+  await page
+    .locator(".record-row")
+    .first()
+    .getByRole("button", { name: "刪除", exact: true })
+    .click();
+  await page.getByRole("button", { name: "確認", exact: true }).click();
+  await expect(page.locator(".record-row")).toHaveCount(1);
+  await page.getByRole("button", { name: "復原最近操作" }).click();
+  await expect(page.locator(".record-row")).toHaveCount(2);
+  await layout(page);
+  await axe(page);
+  await snap(page, info, "teacher-records");
+  await page.getByRole("button", { name: "鎖定畫面" }).click();
+  await expect(page.locator(".record-row")).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("815");
+  await expect(page.locator("#teacher-pin")).toHaveValue("");
+});
+
+test("official counters, bounds, tied ranks, independent stages, persistence, CSV and JSON restore", async ({
+  page,
+  browser,
+}, info) => {
+  await login(page);
+  await addClass(page, "815");
+  await group(page, 1, [1, 2, 3, 4, 5]);
+  await group(page, 2, [6, 7, 8, 9, 10]);
+  const row = page.locator(".record-row").first();
+  await expect(
+    row.getByRole("button", { name: "第1組減少問題數" }),
+  ).toBeDisabled();
+  await row
+    .getByRole("button", { name: "第1組增加問題數" })
+    .click({ clickCount: 3 });
+  await expect(row.locator('[data-field="questions"] output')).toHaveText("3");
+  await page.getByRole("button", { name: "復原最近操作" }).click();
+  await expect(
+    page
+      .locator(".record-row")
+      .first()
+      .locator('[data-field="questions"] output'),
+  ).toHaveText("2");
+  for (const n of [1, 2]) {
+    const current = page.locator(".record-row").nth(n - 1);
+    if (n === 2)
+      await current
+        .getByRole("button", { name: "第2組增加問題數" })
+        .click({ clickCount: 2 });
+    await current
+      .getByRole("button", { name: `第${n}組增加完成數` })
+      .click({ clickCount: 8 });
+    await expect(current.locator('[data-field="completed"] output')).toHaveText(
+      "5",
+    );
+    await expect(
+      current.getByRole("button", { name: `第${n}組增加完成數` }),
+    ).toBeDisabled();
+  }
+  await expect(page.locator("[data-ranking] li").first()).toContainText(
+    "第 1 名",
+  );
+  await expect(page.locator("[data-ranking] li").last()).toContainText(
+    "第 1 名",
+  );
+  await page.getByRole("button", { name: "第二階段", exact: true }).click();
+  await expect(
+    page
+      .locator(".record-row")
+      .first()
+      .locator('[data-field="questions"] output'),
+  ).toHaveText("0");
+  await page
+    .locator(".record-row")
+    .first()
+    .getByRole("button", { name: "第1組增加問題數" })
+    .click();
+  await page.getByRole("button", { name: "第一階段", exact: true }).click();
+  await expect(
+    page
+      .locator(".record-row")
+      .first()
+      .locator('[data-field="questions"] output'),
+  ).toHaveText("2");
+  await layout(page);
+  await axe(page);
+  await snap(page, info, "teacher-ranking");
+  await openTools(page);
+  const csvWait = page.waitForEvent("download");
+  await page.getByRole("button", { name: "匯出 CSV" }).click();
+  const csv = await csvWait;
+  const fs = await import("node:fs/promises");
+  const csvText = await fs.readFile(await csv.path(), "utf8");
+  expect(csvText).toContain("815");
+  expect(csvText).toContain("累積提問數");
+  expect(csvText.split("\r\n")).toHaveLength(5);
+  const backupWait = page.waitForEvent("download");
+  await page.getByRole("button", { name: "JSON 備份" }).click();
+  const backup = await backupWait;
+  const backupPath = await backup.path();
+  const json = JSON.parse(await fs.readFile(backupPath, "utf8"));
+  expect(json.classes[0].groups[0].scores[2].questions).toBe(1);
+  await page.reload();
+  await expect(page.locator(".teacher-shell")).toHaveCount(0);
+  await login(page);
+  await expect(
+    page
+      .locator(".record-row")
+      .first()
+      .locator('[data-field="completed"] output'),
+  ).toHaveText("5");
+  const context = await browser.newContext({ viewport: page.viewportSize() });
+  const restored = await context.newPage();
+  await restored.goto(root);
+  await restored
+    .getByRole("button", { name: "教師專用", exact: false })
+    .click();
+  await restored.locator("#teacher-pin").fill("0709");
+  await restored.getByRole("button", { name: "解鎖紀錄中心" }).click();
+  await restored.locator("#import-file").setInputFiles(backupPath);
+  await restored.getByRole("button", { name: "確認", exact: true }).click();
+  await expect(restored.locator(".record-row")).toHaveCount(2);
+  await expect(
+    restored
+      .locator(".record-row")
+      .first()
+      .locator('[data-field="completed"] output'),
+  ).toHaveText("5");
+  await restored.locator("#import-file").setInputFiles({
+    name: "bad.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"version":9}'),
+  });
+  await expect(restored.locator("#teacher-error")).toContainText("未匯入");
+  await expect(restored.locator(".record-row")).toHaveCount(2);
+  await context.close();
+  await page
+    .getByRole("button", { name: "病例與病人輪替", exact: true })
+    .click();
+  await expect(
+    page.locator(".group-plan").first().locator("input[readonly]"),
+  ).toHaveCount(5);
+  const codes = await page
+    .locator(".group-plan")
+    .first()
+    .locator("input")
+    .evaluateAll((elements) => elements.map((el) => el.value));
+  expect(new Set(codes).size).toBe(5);
+  await page.getByRole("button", { name: "第三階段", exact: true }).click();
+  await expect(page.locator(".score-sheet")).toHaveCount(0);
+  await layout(page);
+  await axe(page);
+  await snap(page, info, "teacher-case-plans");
+});
+
+test("six unchanged patient maps and doctor eighteen-state filtering with manual guesses", async ({
+  page,
+}, info) => {
+  for (let index = 0; index < 6; index++) {
+    await startStudent(page, "patient", 1, 1, index);
+    await expect(page.locator(".body-note")).toHaveCount(
+      cases[index].notes.length,
+    );
+    for (const note of cases[index].notes)
+      await expect(page.locator(`#${note.id}`)).toContainText(note.text);
+    for (const entry of cases)
+      await expect(page.locator("body")).not.toContainText(entry.disease);
+    if (info.project.use.hasTouch)
+      await page.locator(".body-marker").first().tap();
+    else await page.locator(".body-marker").first().click();
+    await expect(page.locator(".body-note").first()).toBeFocused();
+    await layout(page);
+    if (index === 0) {
+      await axe(page);
+      await snap(page, info, "patient-body");
+    }
+  }
+  await startStudent(page, "doctor");
+  await expect(page.locator(".question-panel")).toHaveCount(0);
+  await expect(page.locator(".symptom-card")).toHaveCount(18);
+  if (
+    !((await page.locator(".candidate-details").getAttribute("open")) !== null)
+  )
+    await page.locator(".candidate-details summary").click();
+  for (const symptom of symptoms) {
+    const card = page.locator(`[data-symptom-card="${symptom.id}"]`);
+    for (const value of [true, false]) {
+      const button = card.locator(`[data-value="${value}"]`);
+      if (info.project.use.hasTouch) await button.tap();
+      else await button.click({ clickCount: 2 });
+      await expect(card).toHaveAttribute("data-state", value ? "yes" : "no");
+      await expect(page.locator(".candidate.consistent")).toHaveCount(
+        cases.filter((entry) => entry.evidence[symptom.id] === value).length,
+      );
+    }
+    await card.locator('[data-value="null"]').click();
+    await expect(card).toHaveAttribute("data-state", "unknown");
+  }
+  await page.getByRole("button", { name: "猜測疾病", exact: true }).click();
+  await page.getByRole("radio", { name: "一般感冒", exact: true }).check();
+  await page.getByRole("button", { name: "確認提出猜測" }).click();
+  await expect(page.locator("dialog")).toContainText("沒有指定病例答案");
+  await page.getByRole("button", { name: "繼續問診" }).click();
+  await expect(page.locator("[data-question-count]")).toHaveText("1");
+  await page.getByRole("button", { name: "清空症狀紀錄" }).click();
+  await page.getByRole("button", { name: "確認", exact: true }).click();
+  await expect(page.locator("[data-question-count]")).toHaveText("1");
+  await layout(page);
+  await axe(page);
+  await snap(page, info, "independent-doctor");
+});
+
+test("five independent tablets, manual stage-two question selection, stage-three followups", async ({
+  browser,
+  page,
+}, info) => {
+  const contexts = [];
+  try {
+    const pages = [];
+    for (let i = 0; i < 5; i++) {
+      const context = await browser.newContext({
+        viewport: page.viewportSize(),
+        hasTouch: !!info.project.use.hasTouch,
+      });
+      contexts.push(context);
+      pages.push(await context.newPage());
+    }
+    for (let i = 0; i < 4; i++) await startStudent(pages[i], "doctor", 2, 3);
+    await startStudent(pages[4], "patient", 2, 3, 4);
+    await pages[0].locator('[data-id="fever"][data-value="true"]').click();
+    for (let i = 1; i < 4; i++)
+      await expect(
+        pages[i].locator('[data-symptom-card="fever"]'),
+      ).toHaveAttribute("data-state", "unknown");
+    await pages[0].locator('[data-action="ask"][data-id="head"]').click();
+    await expect(pages[0].locator(".selected-question")).toContainText("頭部");
+    await expect(pages[4].locator("#patient-question")).toHaveValue("");
+    await pages[4].locator("#patient-question").selectOption("head");
+    await expect(pages[4].locator(".answer-option")).toHaveCount(4);
+    await pages[4].locator('[data-action="answer"][data-id="detail"]').click();
+    await expect(pages[4].locator(".answer-analysis")).toHaveCount(0);
+    await pages[4].getByRole("button", { name: "確認回答" }).click();
+    await expect(pages[4].locator(".answer-analysis")).toContainText(
+      "具體且切合問題",
+    );
+    await expect(
+      pages[0].locator(".history-panel,.body-note,.answer-analysis"),
+    ).toHaveCount(0);
+    await layout(pages[4]);
+    await axe(pages[4]);
+    await snap(pages[4], info, "patient-local-answer");
+    await startStudent(page, "doctor", 3, 5);
+    await expect(
+      page.locator(
+        '.score-counter,[data-question-count],[data-action="open-guess"]',
+      ),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "可以再說明不舒服的位置嗎？" })
+      .click();
+    await expect(page.locator(".followup-status")).toContainText("準備詢問");
+    await page.getByLabel("我的補充問題").fill("這種感覺持續多久了？");
+    await layout(page);
+    await axe(page);
+    await snap(page, info, "doctor-followup");
+    await startStudent(page, "patient", 3, 5, 2);
+    await expect(page.locator("[data-practice]")).toHaveCount(3);
+    await page.locator('[data-practice="where"]').check();
+    await expect(page.locator("[data-question-count]")).toHaveCount(0);
+  } finally {
+    for (const context of contexts) await context.close();
+  }
+});
+
+test("invalid case codes and unavailable or corrupt teacher storage fail safely", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "我是病人", exact: false }).click();
+  await page
+    .getByLabel("教師提供的病例碼", { exact: true })
+    .fill("123456789012");
+  await page.getByRole("button", { name: "載入病例", exact: true }).click();
+  await expect(page.locator("#student-error")).toContainText("病例碼");
+  await expect(page.locator(".body-note")).toHaveCount(0);
+  await page
+    .getByLabel("教師提供的病例碼", { exact: true })
+    .fill(makeCode(0, 2, 1));
+  await page.getByRole("button", { name: "載入病例", exact: true }).click();
+  await expect(page.locator("#student-error")).toContainText("不一致");
+  await page.evaluate(
+    (key) => localStorage.setItem(key, "broken backup"),
+    STORAGE_KEY,
+  );
+  await loginCorrupt(page);
+  await expect(page.locator("body")).toContainText("原資料不會被自動覆寫");
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY),
+  ).toBe("broken backup");
+  await page.evaluate((key) => localStorage.removeItem(key), STORAGE_KEY);
+  await page.reload();
+  await login(page);
+  await page.evaluate(() => {
+    Storage.prototype.setItem = function () {
+      throw new DOMException("quota", "QuotaExceededError");
+    };
+  });
+  await page.getByLabel("新增班級", { exact: true }).fill("815");
+  await page.getByRole("button", { name: "新增班級", exact: true }).click();
+  await expect(page.locator("#teacher-error")).toContainText("未保存");
+  await expect(page.locator(".record-row")).toHaveCount(0);
+});
+async function loginCorrupt(page) {
+  await page.goto(root);
+  await page.getByRole("button", { name: "教師專用", exact: false }).click();
+  await page.locator("#teacher-pin").fill("0709");
+  await page.getByRole("button", { name: "解鎖紀錄中心" }).click();
+}
