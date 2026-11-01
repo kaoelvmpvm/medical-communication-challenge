@@ -1,112 +1,176 @@
 import "./style.css";
+import "./teacher.css";
 import { cases, patientView } from "./data/cases.js";
+import { questions } from "./data/questions.js";
 import {
-  createSession,
+  createIndependentSession,
   matches,
   mark,
-  requestHandoff,
-  enterRole,
   countOralQuestion,
   ask,
-  selectAnswer,
   optionsFor,
+  selectAnswer,
   submitAnswer,
-  guess,
+  manualGuess,
   retry,
-  nextCase,
-  nextStage,
 } from "./game/engine.js";
-import { button as b, escapeHtml as e } from "./ui/components.js";
+import { readCode } from "./game/codes.js";
+import { doctor, patient, candidateCards } from "./ui/screens.js";
 import {
-  lobby,
-  handoff,
-  statusBar,
-  doctor,
-  patient,
-  summary,
-  candidateCards,
-} from "./ui/screens.js";
-
+  portal,
+  setup,
+  login,
+  studentStatus,
+  patientQuestions,
+} from "./ui/portal.js";
+import { button as b, escapeHtml as e, notice } from "./ui/components.js";
+import { observeBodyMap } from "./ui/body-lines.js";
+import { TeacherApp } from "./teacher/controller.js";
 const app = document.querySelector("#app");
-app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到練習選單"><span aria-hidden="true">＋</span>醫問到底<span class="brand-punctuation">！</span></a><span class="header-subtitle">病情解碼挑戰</span><span class="version-label">教學模擬 · 1.1</span><button type="button" class="button quiet header-home" data-action="home">練習選單</button></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>醫問到底！——病情解碼挑戰</span><span>僅供教育練習，不提供醫療診斷或治療建議。</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
-const main = document.querySelector("#main");
-const statusHost = document.querySelector("#status-host");
-const toolsHost = document.querySelector("#tools-host");
-const dialog = document.querySelector("#action-dialog");
-const announcer = document.querySelector("#announcer");
-let session = null;
-let observer;
-let dialogOrigin;
-let dialogKind = null;
-
-function announce(message) {
-  announcer.textContent = message;
+app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><span aria-hidden="true">＋</span>醫問到底<span class="brand-punctuation">！</span></a><span class="header-subtitle">病情解碼挑戰</span><span class="version-label">教學模擬 · 1.2</span><button class="button quiet" type="button" data-action="home">角色入口</button></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>醫問到底！——病情解碼挑戰</span><span>教學模擬・不是醫療診斷工具</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
+const main = document.querySelector("#main"),
+  statusHost = document.querySelector("#status-host"),
+  toolsHost = document.querySelector("#tools-host"),
+  dialog = document.querySelector("#action-dialog"),
+  announcer = document.querySelector("#announcer");
+let view = "portal",
+  role = null,
+  session = null,
+  observer = null,
+  teacher = null,
+  origin = null,
+  confirmAction = null;
+function announce(text) {
+  announcer.textContent = text;
 }
-function closeDialog() {
-  dialog.close();
-  dialog.replaceChildren();
-  dialogKind = null;
-  if (dialogOrigin?.isConnected) dialogOrigin.focus({ preventScroll: true });
-}
-function render({ focus = true } = {}) {
+function clear() {
   observer?.disconnect();
-  // Never retain the previous role DOM underneath a handoff screen.
   main.replaceChildren();
   statusHost.replaceChildren();
   toolsHost.replaceChildren();
   announcer.textContent = "";
-  if (!session) main.innerHTML = lobby();
-  else if (session.finished) main.innerHTML = summary(session);
-  else if (session.handoff)
-    main.innerHTML = handoff(
-      session.handoff,
-      session.stage,
-      session.caseIndex + 1,
-    );
-  else {
-    const matching = matches(session.records);
-    statusHost.innerHTML = statusBar(session, matching.length);
-    if (session.role === "doctor") {
-      // No evidence maps or patient notes are supplied to the doctor renderer.
-      const diseases = cases.map(({ id, disease }) => ({ id, disease }));
-      main.innerHTML = doctor(session, diseases, matching);
-      if (session.stage !== 3 && !session.solved)
-        toolsHost.innerHTML = `<nav class="mobile-tools" aria-label="醫師常用操作">${session.stage === 1 ? b("＋ 提問一次", "count") : b("查看問診題庫", "jump-questions")}${b("提出猜測", "open-guess", { kind: "primary" })}</nav>`;
-      const details = main.querySelector(".candidate-details");
-      if (details && matchMedia("(max-width: 700px)").matches)
-        details.open = false;
-    } else {
-      main.innerHTML = patient(
-        session,
-        patientView(cases[session.caseIndex]),
-        session.stage === 2 ? optionsFor(session) : [],
-      );
-      observeBodyMap();
-    }
-  }
-  document.querySelector(".header-home").hidden = !session || !!session.handoff;
-  if (focus) {
-    const heading = main.querySelector("#screen-title, #handoff-title, h1");
-    heading?.setAttribute("tabindex", "-1");
-    heading?.focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }
 }
-function transfer(target) {
-  if (dialog.open) closeDialog();
-  requestHandoff(session, target);
-  render();
+function focusHeading() {
+  const heading = main.querySelector("#screen-title,h1");
+  heading?.setAttribute("tabindex", "-1");
+  heading?.focus({ preventScroll: true });
+  scrollTo({ top: 0, behavior: "instant" });
 }
-function openDialog(kind, markup) {
-  dialogKind = kind;
-  dialogOrigin = document.activeElement;
+function close() {
+  if (dialog.open) dialog.close();
+  dialog.replaceChildren();
+  confirmAction = null;
+  if (origin?.isConnected) origin.focus({ preventScroll: true });
+}
+function modal(markup, callback) {
+  origin = document.activeElement;
+  confirmAction = callback;
   dialog.innerHTML = markup;
   dialog.showModal();
 }
+function confirm(title, text, callback) {
+  modal(
+    `<h2 id="dialog-title">${e(title)}</h2><p>${e(text)}</p><div class="dialog-actions">${b("取消", "cancel")}${b("確認", "confirm", { kind: "primary" })}</div>`,
+    callback,
+  );
+}
+function leaveTeacher(destination) {
+  teacher?.dispose();
+  teacher = null;
+  session = null;
+  role = null;
+  view = destination === "lock" ? "login" : "portal";
+  clear();
+  render();
+}
+function goHome() {
+  if (teacher) return leaveTeacher("home");
+  if (session)
+    return confirm(
+      "回到角色入口？",
+      "這台學生平板的輔助紀錄會清除；教師裝置上的正式成績不受影響。",
+      () => {
+        session = null;
+        role = null;
+        view = "portal";
+        render();
+      },
+    );
+  session = null;
+  role = null;
+  view = "portal";
+  render();
+}
+function render({ focus = true } = {}) {
+  clear();
+  if (view === "portal") main.innerHTML = portal();
+  else if (view === "login") main.innerHTML = login();
+  else if (view === "setup") main.innerHTML = setup(role, session);
+  else if (view === "student" && session) {
+    const matching = matches(session.records);
+    statusHost.innerHTML = studentStatus(session, matching.length);
+    const independentNotice = notice(
+      session.role === "doctor"
+        ? "此平板只保存本回合的輔助紀錄，不會與其他醫師同步。正式提問數與完成數由教師手動登記，疾病猜測也算一次提問。"
+        : "這是你的獨立平板，不會傳送或接收其他平板的內容。請依教師安排與同組醫師口頭互動。",
+    );
+    if (session.role === "doctor") {
+      main.innerHTML =
+        independentNotice +
+        doctor(
+          session,
+          cases.map(({ id, disease }) => ({ id, disease })),
+          matching,
+        );
+      if (session.stage !== 3)
+        toolsHost.innerHTML = `<nav class="mobile-tools" aria-label="醫師常用操作">${session.stage === 1 ? b("＋ 提問一次", "count") : b("查看問診題庫", "jump-questions")}${b("提出猜測", "open-guess", { kind: "primary" })}</nav>`;
+      if (matchMedia("(max-width:700px)").matches)
+        main.querySelector(".candidate-details")?.removeAttribute("open");
+    } else {
+      main.innerHTML =
+        independentNotice +
+        (session.stage === 2 ? patientQuestions(session) : "") +
+        patient(
+          session,
+          patientView(cases[session.caseIndex]),
+          session.stage === 2 ? optionsFor(session) : [],
+        );
+      observer = observeBodyMap(main);
+    }
+  }
+  if (focus) focusHeading();
+}
+function loadStudent(data) {
+  const stage = Number(data.get("stage")),
+    round = Number(data.get("round"));
+  let next;
+  try {
+    if (role === "patient") {
+      const decoded = readCode(data.get("code"));
+      if (decoded.stage !== stage || decoded.round !== round)
+        throw new Error("病例碼與所選階段／回合不一致，請向教師確認。");
+      next = createIndependentSession(role, stage, round, decoded.caseIndex);
+    } else next = createIndependentSession(role, stage, round);
+  } catch (error) {
+    document.querySelector("#student-error").textContent = error.message;
+    return;
+  }
+  const apply = () => {
+    session = next;
+    view = "student";
+    render();
+  };
+  if (session)
+    confirm(
+      "載入新的階段／回合？",
+      "這會清空此平板的症狀、回答與輔助提問數，不會更動教師正式紀錄。",
+      apply,
+    );
+  else apply();
+}
 function showGuess() {
-  openDialog(
-    "guess",
-    `<div class="dialog-heading"><span class="eyebrow">這是模擬病例推理</span><h2 id="dialog-title">你想提出哪個疾病？</h2><p>選好後，再按下確認。這不是醫療診斷。</p></div><form id="guess-form"><fieldset class="guess-options"><legend class="sr-only">選擇猜測疾病</legend>${cases.map((entry) => `<label><input type="radio" name="disease" value="${entry.id}" required><span>${e(entry.disease)}</span></label>`).join("")}</fieldset><div class="dialog-actions"><button type="button" class="button secondary" data-action="cancel-dialog" autofocus>先繼續問</button><button type="submit" class="button primary" id="confirm-guess" disabled>確認這次猜測</button></div></form>`,
+  modal(
+    `<h2 id="dialog-title">提出這次疾病猜測</h2><p>請口頭告訴教師。確認猜測將增加一次本機輔助提問數，正確與否由教師判定。</p><form id="guess-form"><fieldset class="guess-options"><legend class="sr-only">選擇疾病</legend>${cases.map((entry) => `<label><input type="radio" name="disease" value="${entry.id}" required><span>${e(entry.disease)}</span></label>`).join("")}</fieldset><div class="dialog-actions">${b("繼續推理", "cancel")}<button type="submit" class="button primary" disabled id="confirm-guess">確認提出猜測</button></div></form>`,
   );
 }
 function updateRecords(id) {
@@ -138,32 +202,44 @@ app.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || target.disabled) return;
   const action = target.dataset.action;
-  if (action === "cancel-dialog") return closeDialog();
   if (action === "home") {
-    if (!session) return;
-    return openDialog(
-      "home",
-      `<h2 id="dialog-title">要結束這次練習嗎？</h2><p>回到選單後，這次的紀錄與提問次數不會保留。</p><div class="dialog-actions">${b("繼續練習", "cancel-dialog")}${b("結束並回選單", "confirm-home", { kind: "primary" })}</div>`,
-    );
+    if (view === "teacher") return leaveTeacher("home");
+    return goHome();
   }
-  if (action === "confirm-home" && dialogKind === "home") {
-    closeDialog();
+  if (view === "teacher") return;
+  if (action === "cancel") return close();
+  if (action === "confirm") {
+    const apply = confirmAction;
+    close();
+    apply?.();
+    return;
+  }
+  if (action === "choose-role") {
     session = null;
-    return render();
-  }
-  if (action === "start" && !session) {
-    session = createSession(Number(target.dataset.stage));
-    return render();
-  }
-  if (!session) return;
-  if (action === "enter") {
-    if (enterRole(session)) render();
+    role = null;
+    clear();
+    if (target.dataset.role === "teacher") view = "login";
+    else {
+      role = target.dataset.role;
+      view = "setup";
+    }
+    render();
     return;
   }
-  if (session.handoff || (session.finished && !["next-stage"].includes(action)))
+  if (action === "clear-pin") {
+    const input = document.querySelector("#teacher-pin");
+    input.value = "";
+    input.focus();
+    document.querySelector("#login-error").textContent = "";
     return;
-  if (action === "switch")
-    return transfer(session.role === "doctor" ? "patient" : "doctor");
+  }
+  if (action === "change-round" && session) {
+    role = session.role;
+    view = "setup";
+    render();
+    return;
+  }
+  if (view !== "student" || !session) return;
   if (action === "mark") {
     if (mark(session, target.dataset.id, JSON.parse(target.dataset.value)))
       updateRecords(target.dataset.id);
@@ -171,25 +247,48 @@ app.addEventListener("click", (event) => {
   }
   if (action === "count") {
     if (countOralQuestion(session)) {
-      statusHost.querySelector("[data-question-count]").textContent =
+      document.querySelector("[data-question-count]").textContent =
         session.questionCount;
-      announce(`已記錄提問，目前 ${session.questionCount} 次。`);
+      announce(
+        `本機輔助提問 ${session.questionCount} 次，正式紀錄由教師登記。`,
+      );
     }
     return;
   }
   if (action === "ask") {
-    if (ask(session, target.dataset.id)) render();
+    if (ask(session, target.dataset.id)) {
+      render({ focus: false });
+      const panel = main.querySelector(".selected-question");
+      panel?.setAttribute("tabindex", "-1");
+      panel?.focus();
+    }
     return;
   }
+  if (
+    action === "open-guess" &&
+    session.role === "doctor" &&
+    session.stage !== 3
+  )
+    return showGuess();
+  if (action === "open-clear" && session.role === "doctor")
+    return confirm(
+      "清空症狀紀錄？",
+      "此平板的症狀將恢復未確認，累積輔助提問數保留。教師紀錄不受影響。",
+      () => {
+        retry(session);
+        render();
+        announce("紀錄已清空，輔助提問數保留。");
+      },
+    );
   if (action === "answer") {
     if (selectAnswer(session, target.dataset.id)) {
-      const scrollY = window.scrollY;
+      const y = scrollY;
       render({ focus: false });
       main
         .querySelector(`[data-action="answer"][data-id="${target.dataset.id}"]`)
-        ?.focus({ preventScroll: true });
-      window.scrollTo({ top: scrollY, behavior: "instant" });
-      announce("已選擇回答，尚未送出。");
+        .focus({ preventScroll: true });
+      scrollTo({ top: y, behavior: "instant" });
+      announce("已選擇，尚未確認。");
     }
     return;
   }
@@ -206,128 +305,134 @@ app.addEventListener("click", (event) => {
     const note = document.getElementById(target.dataset.note);
     main
       .querySelectorAll(".body-note")
-      .forEach((item) => item.classList.toggle("highlighted", item === note));
-    note?.focus({ preventScroll: true });
-    note?.scrollIntoView({
+      .forEach((el) => el.classList.toggle("highlighted", el === note));
+    note.focus({ preventScroll: true });
+    note.scrollIntoView({
       block: "center",
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+      behavior: matchMedia("(prefers-reduced-motion:reduce)").matches
         ? "instant"
         : "smooth",
     });
     return;
   }
-  if (session.role === "doctor") {
-    if (action === "jump-questions") {
-      const panel = main.querySelector(".question-panel");
-      panel?.scrollIntoView({ block: "start" });
-      panel?.setAttribute("tabindex", "-1");
-      panel?.focus({ preventScroll: true });
-      return;
-    }
-    if (action === "open-guess" && session.stage !== 3 && !session.solved)
-      return showGuess();
-    if (action === "open-clear" && session.stage !== 3)
-      return openDialog(
-        "clear",
-        `<h2 id="dialog-title">清空這位病患的症狀紀錄？</h2><p>18 項症狀將恢復未確認，累積提問數及已確認的對話仍會保留。</p><div class="dialog-actions">${b("保留紀錄", "cancel-dialog")}${b("確認清空", "confirm-clear", { kind: "danger" })}</div>`,
-      );
-    if (
-      (action === "confirm-clear" && dialogKind === "clear") ||
-      (action === "retry" && dialogKind === "wrong")
-    ) {
-      if (retry(session)) {
-        closeDialog();
-        render();
-        announce("症狀已恢復未確認，提問數已保留。");
-      }
-      return;
-    }
-    if (action === "next" && nextCase(session)) return render();
-    if (action === "practice-next" && session.stage === 3)
-      return openDialog(
-        "practice-next",
-        `<h2 id="dialog-title">完成這位病患的溝通練習？</h2><p>確認雙方已完成描述、回述與補充，再進入下一個情境。</p><div class="dialog-actions">${b("再練習一下", "cancel-dialog")}${b("確認完成", "confirm-practice-next", { kind: "primary" })}</div>`,
-      );
-    if (
-      action === "confirm-practice-next" &&
-      dialogKind === "practice-next" &&
-      session.stage === 3
-    ) {
-      closeDialog();
-      if (nextCase(session)) render();
-      return;
-    }
+  if (action === "jump-questions") {
+    const panel = main.querySelector(".question-panel");
+    panel.setAttribute("tabindex", "-1");
+    panel.focus();
+    return;
   }
-  if (action === "next-stage" && nextStage(session)) render();
-});
-app.addEventListener("change", (event) => {
-  if (event.target.matches('input[name="disease"]'))
-    document.querySelector("#confirm-guess").disabled = false;
   if (
-    event.target.dataset.practice &&
-    session?.role === "patient" &&
-    session.stage === 3 &&
-    !session.handoff
+    action === "followup" &&
+    session.role === "doctor" &&
+    session.stage === 3
   ) {
-    const value = event.target.dataset.practice;
-    session.practice = event.target.checked
-      ? [...new Set([...session.practice, value])]
-      : session.practice.filter((item) => item !== value);
+    session.lastFollowup = `準備詢問：${target.dataset.text}`;
+    session.followups.push(target.dataset.text);
+    main.querySelector(".followup-status").textContent = session.lastFollowup;
   }
 });
 app.addEventListener("submit", (event) => {
-  if (event.target.id !== "guess-form" || dialogKind !== "guess") return;
+  if (view === "teacher") return;
   event.preventDefault();
-  const result = guess(session, new FormData(event.target).get("disease"));
-  closeDialog();
-  if (result === true) render();
-  else if (result === false)
-    openDialog(
-      "wrong",
-      `<h2 id="dialog-title">這次猜測與模擬病例不同</h2><p>回想哪些資訊還需要釐清。可以保留紀錄繼續問，也可以清空紀錄重新整理；累積提問數都會保留。</p><div class="dialog-actions">${b("保留紀錄，繼續問", "cancel-dialog")}${b("清空紀錄，重新整理", "retry", { kind: "primary" })}</div>`,
-    );
-});
-dialog.addEventListener("cancel", (event) => {
-  event.preventDefault();
-  closeDialog();
-});
-document.querySelector(".brand").addEventListener("click", (event) => {
-  if (session) {
-    event.preventDefault();
-    document.querySelector('[data-action="home"]').click();
+  const form = event.target;
+  if (form.id === "login-form") {
+    if (new FormData(form).get("pin") !== "0709") {
+      document.querySelector("#login-error").textContent =
+        "密碼不正確，請清除後重新輸入。";
+      return;
+    }
+    form.reset();
+    clear();
+    view = "teacher";
+    teacher = new TeacherApp(main, dialog, { leave: leaveTeacher, announce });
+    focusHeading();
+    return;
+  }
+  if (form.id === "student-form") return loadStudent(new FormData(form));
+  if (form.id === "guess-form" && session?.role === "doctor") {
+    const diseaseId = new FormData(form).get("disease");
+    if (manualGuess(session, diseaseId)) {
+      close();
+      render({ focus: false });
+      modal(
+        `<h2 id="dialog-title">猜測已記入本機輔助次數</h2><p>你提出「${e(cases.find((entry) => entry.id === diseaseId).disease)}」。請教師判定並登記正式提問數；猜錯可以繼續問，或清空紀錄重新整理，不會歸零提問數。</p><p>這台醫師平板沒有指定病例答案，不會自行判定猜對或猜錯。</p>${b("繼續問診", "cancel", { kind: "primary" })}`,
+      );
+    }
   }
 });
-// Prevent a stale role screen being restored from the browser back-forward cache.
-window.addEventListener("pageshow", (event) => {
-  if (event.persisted && session?.role) transfer(session.role);
+app.addEventListener("change", (event) => {
+  if (view === "teacher") return;
+  if (event.target.name === "disease") {
+    document.querySelector("#confirm-guess").disabled = false;
+    return;
+  }
+  if (event.target.id === "patient-question" && session?.role === "patient") {
+    const questionId = event.target.value;
+    if (questionId && !questions.some((q) => q.id === questionId)) return;
+    const apply = () => {
+      session.pending = questionId || null;
+      session.selectedAnswer = null;
+      session.submitted = false;
+      render({ focus: false });
+      main.querySelector("#patient-question").focus({ preventScroll: true });
+    };
+    if (session.selectedAnswer) {
+      event.target.value = session.pending || "";
+      confirm(
+        "更換回答的問題？",
+        "這台平板目前的選擇與解析將清除。先前已口頭分享的回答不會自動通知醫師。",
+        apply,
+      );
+    } else apply();
+    return;
+  }
+  if (
+    event.target.dataset.practice &&
+    session?.role === "patient" &&
+    session.stage === 3
+  ) {
+    const key = event.target.dataset.practice;
+    session.practice = event.target.checked
+      ? [...new Set([...session.practice, key])]
+      : session.practice.filter((value) => value !== key);
+  }
 });
-
-function observeBodyMap() {
-  const map = main.querySelector(".body-map");
-  if (!map) return;
-  const update = () => {
-    const svg = map.querySelector(".body-connectors");
-    if (!svg || matchMedia("(max-width: 700px)").matches) return;
-    const bounds = map.getBoundingClientRect();
-    svg.setAttribute("viewBox", `0 0 ${bounds.width} ${bounds.height}`);
-    const lines = [...map.querySelectorAll(".body-note")].map((note) => {
-      const marker = map
-        .querySelector(`[data-note="${note.id}"]`)
-        .getBoundingClientRect();
-      const card = note.getBoundingClientRect();
-      const left = note.classList.contains("left");
-      const x1 = (left ? card.right : card.left) - bounds.left;
-      const y1 = card.top + card.height / 2 - bounds.top;
-      const x2 = marker.left + marker.width / 2 - bounds.left;
-      const y2 = marker.top + marker.height / 2 - bounds.top;
-      const elbow = left ? x1 + 20 : x1 - 20;
-      return `<polyline points="${x1},${y1} ${elbow},${y1} ${x2},${y2}"/>`;
-    });
-    svg.innerHTML = lines.join("");
-  };
-  observer = new ResizeObserver(update);
-  observer.observe(map);
-  map.querySelectorAll(".body-note").forEach((note) => observer.observe(note));
-  requestAnimationFrame(update);
-}
+app.addEventListener("input", (event) => {
+  if (
+    event.target.id === "followup-notes" &&
+    session?.role === "doctor" &&
+    session.stage === 3
+  )
+    session.followupNotes = event.target.value;
+});
+dialog.addEventListener("cancel", (event) => {
+  if (view === "teacher") return;
+  event.preventDefault();
+  close();
+});
+document.querySelector(".brand").addEventListener("click", (event) => {
+  event.preventDefault();
+  goHome();
+});
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    close();
+    teacher?.dispose();
+    teacher = null;
+    session = null;
+    role = null;
+    view = "portal";
+    render();
+  }
+});
+window.addEventListener("storage", (event) => {
+  if (view === "teacher" && event.key === "medical-challenge-teacher-v1") {
+    const status = main.querySelector(".storage-status");
+    if (status) {
+      status.textContent =
+        "另一個分頁已更新紀錄。請重新整理後再登記，避免覆寫。";
+      status.setAttribute("role", "alert");
+    }
+  }
+});
 render({ focus: false });

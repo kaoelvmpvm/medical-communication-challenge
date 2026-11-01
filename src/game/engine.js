@@ -79,7 +79,7 @@ export function ask(session, questionId) {
     session.role !== "doctor" ||
     session.handoff ||
     session.solved ||
-    (session.pending && !session.submitted)
+    (!session.independent && session.pending && !session.submitted)
   )
     return false;
   const question = questions.find((item) => item.id === questionId);
@@ -89,7 +89,7 @@ export function ask(session, questionId) {
   session.pending = questionId;
   session.selectedAnswer = null;
   session.submitted = false;
-  requestHandoff(session, "patient");
+  if (!session.independent) requestHandoff(session, "patient");
   return true;
 }
 export function selectAnswer(session, id) {
@@ -133,6 +133,7 @@ export function submitAnswer(session) {
 }
 export function guess(session, diseaseId) {
   if (
+    session.independent ||
     session.stage === 3 ||
     session.role !== "doctor" ||
     session.handoff ||
@@ -183,5 +184,40 @@ export function nextCase(session) {
 export function nextStage(session) {
   if (!session.finished || session.stage >= 3) return false;
   Object.assign(session, createSession(session.stage + 1));
+  return true;
+}
+
+// Multi-tablet sessions never carry a doctor-side assigned case or grade guesses.
+export function createIndependentSession(role, stage, round, caseIndex = null) {
+  if (!["doctor", "patient"].includes(role) || ![1, 2, 3, 4, 5].includes(round))
+    throw new Error("角色或回合無效");
+  if (
+    role === "patient" &&
+    (!Number.isInteger(caseIndex) || caseIndex < 0 || caseIndex >= cases.length)
+  )
+    throw new Error("請先載入有效病例碼");
+  return {
+    ...createSession(stage),
+    role,
+    handoff: null,
+    independent: true,
+    round,
+    caseIndex: role === "patient" ? caseIndex : null,
+    manualGuesses: [],
+    followups: [],
+  };
+}
+export function manualGuess(session, diseaseId) {
+  if (
+    !session.independent ||
+    session.role !== "doctor" ||
+    session.stage === 3 ||
+    !cases.some((entry) => entry.id === diseaseId)
+  )
+    return false;
+  session.questionCount++;
+  session.totalQuestions++;
+  session.attempts++;
+  session.manualGuesses.push(diseaseId);
   return true;
 }
