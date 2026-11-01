@@ -1,45 +1,96 @@
-# 醫問到底！——病情解碼挑戰
+# 醫問到底！——病情解碼挑戰 V1.1
 
-以醫病溝通為主題的繁體中文互動學習網站，使用 Vite + Vanilla JavaScript。
-目前提供響應式首頁與三階段模組骨架，**尚未實作完整遊戲、題庫或計分功能**。
-網站僅供學習用途，不提供醫療診斷或治療建議。
+Vite + Vanilla JavaScript 的雙人醫病溝通教育遊戲。兩位同學共用一台裝置，輪流扮演醫師與病患。所有病例皆為虛構教學情境，**不是真實醫療診斷工具**。
 
-## 本機開發
+## 開發及預覽
 
-使用 Node.js 24（見 `.nvmrc`）及 npm：
+使用 Node.js 24（`.nvmrc`）及 npm，不需 API 金鑰、資料庫或外部服務。
 
 ```sh
 npm ci
 npm run dev
 ```
 
-在終端顯示的網址開啟網站。其他指令：
+開啟終端顯示的網址，路徑為 `/medical-communication-challenge/`。正式建置與預覽：
 
 ```sh
-npm test        # 驗證三階段順序、模組資料與未開放狀態
-npm run build  # 產生 dist/ 正式網站
-npm run preview # 本機預覽正式建置結果
+npm test
+npm run build
+npm run preview
 ```
 
-網站部署路徑固定為 `/medical-communication-challenge/`，由 `vite.config.js` 設定。
-不需要 API 金鑰、資料庫或環境變數。
+若雲端環境的預設 npm 快取目錄不可寫，安裝時使用 `npm ci --cache /tmp/medical-npm-cache`。
 
-## 專案結構
+## 怎麼玩
 
-- `src/main.js`：首頁與導覽。
-- `src/style.css`：響應式樣式、鍵盤焦點及減少動態效果支援。
-- `src/stages/listen.js`：第一階段「聽懂症狀」。
-- `src/stages/ask.js`：第二階段「問對問題」。
-- `src/stages/explain.js`：第三階段「說清照護」。
-- `src/stages/index.js`：依學習順序匯出模組清單。
-- `tests/stages.test.js`：使用 Node.js 內建測試工具驗證模組契約。
+1. 選擇階段；建議從第一階段開始。每階段有六位病患。
+2. 病患在交接頁確認身分，閱讀人體周圍的生活化情境敘述。沒有提及的感受，在本教學情境中視為目前沒有。
+3. 交給醫師時，原角色畫面會立即移除；醫師確認身分後才開啟自己的畫面。
+4. 完成一位病患後，下一位病患先讀情境；六位都完成後可以進入下一階段。
 
-目前每個模組只匯出 `id`、`number`、`title`、`subtitle`、`description`、`skill`、`status` 等中繼資料；`status: 'planned'` 表示未開放。未來可在各模組加入遊戲邏輯，再擴充入口與路由。
+### 第一階段：聽懂症狀
 
-## GitHub Pages 自動部署
+病患依情境自行回應口頭問題，不提供真假答案表。醫師自由提問，每問完一題按「記錄一次提問」，再操作 18 種症狀的「有／沒有／清除」。此階段沒有通用問診題庫或最佳問題推薦。
 
-1. 在 GitHub 儲存庫 **Settings → Pages → Build and deployment → Source** 選擇 **GitHub Actions**（需要管理權限）。
-2. 將程式推送或合併至 `main`；`.github/workflows/deploy.yml` 會依序執行 `npm ci`、測試、建置及部署。也可在 Actions 手動執行工作流程。
-3. 首次部署成功後，網站網址為 `https://kaoelvmpvm.github.io/medical-communication-challenge/`。
+六張候選卡依目前紀錄比對，線索不一致時保留卡片、降低視覺強度。這只表示是否符合**預先定義的模擬案例**，不是確診或醫學排除。
 
-對 `main` 的 Pull Request 只執行測試與建置，不發布。部署使用 GitHub 提供的 `GITHUB_TOKEN` 與 OIDC，無須建立個人存取權杖。
+### 第二階段：問對問題
+
+醫師從六類通用問題選問，每次選問立即計入提問數，並進入交接頁。病患從四種表達方式擇一，可以修改選擇；**確認送出後**才顯示表達品質解析。醫師再次接手後可讀取已送出的回答，自行整理症狀。未完成的問題會阻止再次選問，不會因快速重複點按而重複出題或送出。
+
+### 第三階段：說清照護
+
+病患根據人體圖與描述提示練習完整表達；醫師練習傾聽、回述及確認。勾選提示只作為自我提醒；這個階段沒有疾病猜測、提問計數或競賽分數。
+
+### 猜測、重來與進度
+
+猜測必須先選擇疾病，再確認送出。猜錯不揭露正確疾病，可保留紀錄繼續問，或清空症狀重新整理。**猜錯與清空紀錄都保留該病患的累積提問數和已確認對話**。下一位病患會清空個別紀錄，但階段回顧保留累積提問總數。V1 原本沒有計分規則，本版不自行新增分數公式。
+
+## 角色隔離與限制
+
+- 病患畫面只接收感受敘述，不呈現疾病名稱、標準症狀真假表或病例原始答案。
+- 醫師畫面只取得候選疾病名稱、線索一致性及自己的紀錄；第二階段額外取得病患已確認送出的回答。
+- 每次交接都先移除上一角色的 DOM、清除即時播報、關閉及清空對話視窗，再顯示中性確認頁。沒有交接動畫或背景殘留畫面。
+- 這是同機輪流操作的前端教具，**沒有登入權限或跨裝置即時同步**。瀏覽器開發工具仍能查看前端程式與虛構資料，請勿放入真實個資。
+- 紀錄僅保存在目前分頁的記憶體，不使用雲端儲存；重新整理會重新開始。返回選單前會先確認。
+
+## 架構
+
+- `src/data/cases.js`：六個虛構教學病例、身體部位錨點與病患安全資料投影。
+- `src/data/symptoms.js`：18 種症狀與五個分組。
+- `src/data/questions.js`：通用問題及回答選項／表達解析。
+- `src/game/engine.js`：角色、三態紀錄、比對、提問、選答、猜測及階段進度；不依賴 DOM。
+- `src/ui/`：角色畫面、共用按鈕／提示與 SVG 人體圖。
+- `src/main.js`：事件、焦點、交接、對話視窗與連接線尺寸更新。
+- `src/stages/`：保留原本三階段 ID、名稱及順序，狀態改為可使用。
+- `src/style.css`：海軍藍／青綠視覺系統、響應式布局、44px 主要操作區與 reduced-motion。
+
+儲存庫 V1 只有首頁與模組骨架，沒有既定病例、題庫或計分實作。本版新增的是基本教學資料，未覆寫既有病例規則。正式授課前可由教師／醫療教育專業人員另行審定情境內容。
+
+## 測試與畫面證據
+
+```sh
+npm test                           # 12 項資料與狀態邏輯測試
+npm run build
+npx playwright install chromium    # 第一次執行時安裝測試用瀏覽器
+npm run test:e2e                    # 四種裝置配置，共 16 項操作測試
+npx playwright show-report          # 檢視報告及截圖
+```
+
+已有 Chromium 的雲端環境可使用：
+
+```sh
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+```
+
+測試涵蓋 1440×900、1024×768、390×844、375×667，實際操作六病例、18 種症狀、猜測／重來、三階段、角色交接、問答確認、鍵盤及觸控。使用 axe 檢查主要頁面的 WCAG 2.2 AA 相關自動規則；自動檢查不代表完整的人工無障礙認證。
+
+每次測試產生 `test-results/` 與 `playwright-report/`（不納入版本控制），精選截圖與驗收紀錄見 [docs/validation.md](docs/validation.md)。
+
+## GitHub Pages 部署
+
+原有 `vite.config.js` 子路徑及 `.github/workflows/deploy.yml` 保持不變。
+
+1. 在 GitHub 儲存庫 **Settings → Pages → Build and deployment → Source** 選擇 **GitHub Actions**。
+2. 推送或合併至 `main` 後，工作流程會執行 `npm ci`、單元測試、建置及 Pages 部署；Pull Request 只測試與建置。
+3. 部署成功後預期網址為 `https://kaoelvmpvm.github.io/medical-communication-challenge/`。本機建置成功不代表遠端部署已完成，請以 Actions 執行結果為準。
