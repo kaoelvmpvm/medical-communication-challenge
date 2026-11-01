@@ -1,6 +1,6 @@
 // Plays the supplied recording; no substitute synthesized tune.
 const MUSIC_KEY = "medical-challenge-music-v1";
-const AUDIO_PATH = `${import.meta.env.BASE_URL}audio/background.m4a`;
+const AUDIO_PATH = `${import.meta.env?.BASE_URL || "/medical-communication-challenge/"}audio/background.m4a`;
 const MUSIC_VOLUME = 0.14;
 let enabled = true;
 let track = null;
