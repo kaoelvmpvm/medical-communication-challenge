@@ -68,7 +68,7 @@ function inlineQuestions(systemId, s) {
   return `<div class="inline-question-list" aria-label="${e(systemId)}部位的問診題目">${items.map((question) => {
     const selected = s.pending === question.id;
     const disabled = s.solved || (!s.independent && s.pending && !s.submitted);
-    return `<div class="inline-question-item"><button type="button" id="question-${question.id}" class="question-button inline-question-button ${selected ? "is-selected" : ""}" data-action="ask" data-id="${question.id}" aria-pressed="${selected}" ${disabled ? "disabled" : ""}><span class="question-prompt-label">問診問題</span><span class="question-prompt-text">${e(question.title)}</span><span class="question-arrow" aria-hidden="true">↗</span></button>${selected ? '<p class="selected-question" role="status">✓ 已選這題，請口頭詢問病人。</p>' : ""}</div>`;
+    return `<div class="inline-question-item"><button type="button" id="question-${question.id}" class="question-button inline-question-button ${selected ? "is-selected" : ""}" data-action="ask" data-id="${question.id}" aria-pressed="${selected}" ${disabled ? "disabled" : ""}><span class="question-prompt-label">問診問題</span><span class="question-prompt-text">${e(question.title)}</span><span class="question-arrow" aria-hidden="true">↗</span></button>${selected ? '<p class="selected-question" role="status">✓ 已選這題：${e(question.title)}。請口頭詢問病人。</p>' : ""}</div>`;
   }).join("")}</div>`;
 }
 
