@@ -383,3 +383,79 @@
     transform: none;
   }
 }
+
+/* Brand art & restrained game microinteractions */
+.header-inner { gap: 12px; }
+.brand { flex: 0 0 auto; line-height: 1; }
+.header-logo {
+  display: block;
+  width: clamp(126px, 12vw, 160px);
+  height: auto;
+  max-height: 54px;
+  object-fit: contain;
+}
+.brand > .brand-fallback {
+  display: inline;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: var(--navy);
+  font-size: 20px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+.sound-toggle {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #b6c9cd;
+  border-radius: 999px;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
+  background: #fffdf8;
+  white-space: nowrap;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+.sound-toggle[aria-pressed="true"] {
+  background: #e3f3ed;
+  border-color: #087d75;
+  color: #075d58;
+}
+.sound-toggle:hover { background: #f2ede1; }
+.sound-toggle:active { transform: scale(.97); }
+.sound-toggle:focus-visible { outline: 3px solid #a34c0a; outline-offset: 3px; }
+.home-copy { display: flex; align-items: center; justify-content: center; }
+.home-title { width: 100%; margin-bottom: 0; }
+.role-art img { transition: transform .22s ease; }
+.role-entry:hover .role-art img { transform: scale(1.045) rotate(-1deg); }
+.role-cta > span:last-child { transition: transform .18s ease; }
+.role-entry:hover .role-cta > span:last-child { transform: translateX(4px); }
+.symptom-card { transition: border-color .18s ease, background-color .18s ease; }
+@keyframes screen-arrive {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.main-shell.screen-enter {
+  animation: screen-arrive .28s cubic-bezier(.2,.7,.2,1) both;
+}
+@media (max-width: 700px) {
+  .header-inner { padding-inline: 14px; gap: 8px; }
+  .header-logo { width: clamp(104px, 30vw, 138px); }
+  .header-actions { gap: 4px; }
+  .header-actions .button { padding: 8px 9px; min-height: 42px; font-size: 13px; }
+  .sound-toggle { padding: 8px 10px; min-height: 42px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .main-shell.screen-enter { animation: none; }
+  .role-art img, .role-cta > span:last-child, .sound-toggle, .symptom-card {
+    transition: none;
+  }
+  .role-entry:hover .role-art img, .role-entry:hover .role-cta > span:last-child {
+    transform: none;
+  }
+}

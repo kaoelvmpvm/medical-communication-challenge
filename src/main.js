@@ -1,6 +1,7 @@
 import "./style.css";
 import "./teacher.css";
 import "./art.css";
+import { isSoundEnabled, setSoundEnabled, playUiSound } from "./ui/sound.js";
 import { displayVersion } from "./data/version.js";
 import { cases, patientView } from "./data/cases.js";
 import { symptoms } from "./data/symptoms.js";
@@ -34,7 +35,7 @@ import { artPlaceholder } from "./ui/case-art.js";
 import { observeBodyMap } from "./ui/body-lines.js";
 import { TeacherApp } from "./teacher/controller.js";
 const app = document.querySelector("#app");
-app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口">醫問到底<span class="brand-punctuation">！</span></a><button class="button quiet" type="button" data-action="home">角色入口</button></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>教學模擬・不是醫療診斷工具｜版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
+app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><img class="header-logo" data-art-kind="header-logo" src="${e(portalArt.title || "")}" width="2172" height="724" alt="醫問到底！"><span class="brand-fallback" hidden>醫問到底！</span></a><div class="header-actions"><button class="sound-toggle" type="button" data-action="toggle-sound" aria-pressed="${isSoundEnabled()}" aria-label="${isSoundEnabled() ? "關閉音效" : "開啟音效"}" title="音效開關">${isSoundEnabled() ? "♪ 音效開" : "♪ 音效關"}</button><button class="button quiet" type="button" data-action="home">角色入口</button></div></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
 const main = document.querySelector("#main"),
   statusHost = document.querySelector("#status-host"),
   toolsHost = document.querySelector("#tools-host"),
@@ -47,6 +48,7 @@ let view = "portal",
   teacher = null,
   origin = null,
   confirmAction = null;
+let lastRenderedScreenKey = "";
 function announce(text) {
   announcer.textContent = text;
 }
@@ -110,6 +112,8 @@ function goHome() {
   render();
 }
 function render({ focus = true } = {}) {
+  const screenKey = `${view}:${session?.role || role || ""}:${session?.stage || 0}:${session?.round || 0}`;
+  const hasChangedScreen = screenKey !== lastRenderedScreenKey;
   try {
     history.replaceState(
       { view, role: session?.role || role, stage: session?.stage || null },
@@ -167,6 +171,12 @@ function render({ focus = true } = {}) {
       observer = observeBodyMap(main);
     }
   }
+  if (hasChangedScreen) {
+    main.classList.remove("screen-enter");
+    void main.offsetWidth;
+    main.classList.add("screen-enter");
+  }
+  lastRenderedScreenKey = screenKey;
   if (focus) focusHeading();
 }
 function pauseRandomCase() {
@@ -398,6 +408,10 @@ app.addEventListener("submit", (event) => {
     clear();
     view = "teacher";
     teacher = new TeacherApp(main, dialog, { leave: leaveTeacher, announce });
+    main.classList.remove("screen-enter");
+    void main.offsetWidth;
+    main.classList.add("screen-enter");
+    lastRenderedScreenKey = "teacher";
     focusHeading();
     return;
   }
@@ -482,6 +496,24 @@ dialog.addEventListener("cancel", (event) => {
   event.preventDefault();
   close();
 });
+// Sound plays only after an explicit user gesture and is off by default.
+app.addEventListener("click", (event) => {
+  const control = event.target.closest("button");
+  if (!control || control.disabled) return;
+  if (control.dataset.action === "toggle-sound") {
+    const enabled = setSoundEnabled(!isSoundEnabled());
+    control.setAttribute("aria-pressed", String(enabled));
+    control.setAttribute("aria-label", enabled ? "關閉音效" : "開啟音效");
+    control.textContent = enabled ? "♪ 音效開" : "♪ 音效關";
+    if (enabled) playUiSound("enable");
+    announce(enabled ? "音效已開啟" : "音效已關閉");
+    return;
+  }
+  const action = control.dataset.action || "";
+  const type = action === "mark" ? "mark" : ["choose-role", "home", "change-round"].includes(action) ? "navigate" : "tap";
+  playUiSound(type);
+}, true);
+
 document.querySelector(".brand").addEventListener("click", (event) => {
   event.preventDefault();
   goHome();
@@ -536,7 +568,9 @@ app.addEventListener(
     else if (event.target.dataset?.artKind) {
       const image = event.target;
       image.hidden = true;
-      if (image.dataset.artKind === "logo")
+      if (image.dataset.artKind === "header-logo")
+        image.parentElement.querySelector(".brand-fallback")?.removeAttribute("hidden");
+      else if (image.dataset.artKind === "logo")
         image
           .closest("h1")
           .querySelector(".logo-text")
