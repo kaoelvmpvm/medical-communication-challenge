@@ -25,20 +25,20 @@ export function statusBar(s, candidateCount) {
 }
 
 export function candidateCards(diseases, matching) {
-  return diseases
-    .map((disease) => {
-      const status =
-        disease.comparison ||
-        (matching.includes(disease.id) ? "consistent" : "conflict");
-      const label = {
-        unrecorded: "— 尚無比較線索",
-        consistent: "✓ 與線索一致",
-        insufficient: "？ 資訊不足以比較",
-        conflict: "− 與線索衝突",
-      }[status];
-      return `<article class="candidate ${status === "conflict" ? "inconsistent" : "consistent"} ${status === "insufficient" ? "uncertain" : ""}" data-candidate="${disease.id}" data-comparison="${status}"><span class="candidate-icon" aria-hidden="true">${pictogram(disease.id)}</span><h3>${e(disease.disease)}</h3><span class="candidate-label">${label}</span></article>`;
-    })
-    .join("");
+  return diseases.map((disease) => {
+    const status = disease.comparison ||
+      (matching.includes(disease.id) ? "insufficient" : "conflict");
+    const label = {
+      unrecorded: "？ 無法判斷",
+      insufficient: "？ 無法判斷",
+      consistent: "✓ 與線索相符",
+      conflict: "× 與線索衝突",
+    }[status];
+    const appearance =
+      status === "conflict" ? "inconsistent" :
+      status === "consistent" ? "confirmed" : "uncertain";
+    return `<article class="candidate ${appearance}" data-candidate="${disease.id}" data-comparison="${status}"><span class="candidate-icon" aria-hidden="true">${pictogram(disease.id)}</span><h3>${e(disease.disease)}</h3><span class="candidate-label">${label}</span></article>`;
+  }).join("");
 }
 
 function symptomCard(symptom, value, level = 4) {

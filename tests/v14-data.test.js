@@ -147,7 +147,7 @@ test("unknown and not-applicable facts never eliminate a case or claim certainty
     "insufficient",
   );
   assert.ok(matches({ periodCramps: true }).includes(c07.id));
-  assert.equal(comparison(c07.evidence, { redEye: true }), "consistent");
+  assert.equal(comparison(c07.evidence, { redEye: true }), "insufficient");
   assert.equal(comparison(c07.evidence, { redEye: false }), "conflict");
   assert.equal(
     comparison(c07.evidence, { fatigue: true, fever: true }),
@@ -249,9 +249,33 @@ test("new-case best responses use source facts, vary position, and are not alway
 test("C07 conjunctivitis has explicit negative gastro symptoms and survives elimination", () => {
   const c07 = cases.find((c) => c.id === "viral_conjunctivitis");
   const records = { fever: false, vomit: false, diarrhea: false, belly: false };
-  assert.equal(comparison(c07.evidence, records), "consistent");
+  assert.equal(comparison(c07.evidence, records), "insufficient");
   assert.ok(matches(records).includes(c07.id));
-  assert.equal(comparison(c07.evidence, { ...records, redEye: true }), "consistent");
+  assert.equal(comparison(c07.evidence, { ...records, redEye: true }), "insufficient");
   assert.equal(comparison(c07.evidence, { ...records, redEye: false }), "conflict");
   assert.match(c07.notes[4].text, /沒有嘔吐、腹瀉或腹痛/);
+});
+
+test("Guess Who three-state logic checks all explicit yes/no answers before full match", () => {
+  const flu = cases.find((c) => c.id === "flu");
+  assert.equal(flu.evidence.fever, true);
+  assert.equal(comparison(flu.evidence, { fever: false }), "conflict");
+  assert.equal(comparison(flu.evidence, { fever: true }), "insufficient");
+  for (const entry of cases) {
+    const facts = Object.fromEntries(
+      Object.entries(entry.evidence).filter(([, value]) => typeof value === "boolean"),
+    );
+    assert.ok(Object.keys(facts).length > 0, entry.id);
+    assert.equal(comparison(entry.evidence, {}), "unrecorded", entry.id);
+    assert.equal(comparison(entry.evidence, facts), "consistent", entry.id);
+    const first = Object.keys(facts)[0];
+    assert.equal(comparison(entry.evidence, { ...facts, [first]: !facts[first] }), "conflict", entry.id);
+    if (Object.keys(facts).length > 1) {
+      const partial = { ...facts };
+      delete partial[first];
+      assert.equal(comparison(entry.evidence, partial), "insufficient", entry.id);
+    }
+    assert.ok(matches(facts).includes(entry.id), entry.id);
+  }
+  assert.equal(comparison(flu.evidence, { fever: true, frequent: true }), "insufficient");
 });

@@ -336,7 +336,7 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
       if (info.project.use.hasTouch) await button.tap();
       else await button.click({ clickCount: 2 });
       await expect(card).toHaveAttribute("data-state", value ? "yes" : "no");
-      await expect(page.locator(".candidate.consistent")).toHaveCount(
+      await expect(page.locator(".candidate:not(.inconsistent)")).toHaveCount(
         cases.filter(
           (entry) =>
             typeof entry.evidence[symptom.id] !== "boolean" ||
@@ -659,7 +659,7 @@ test("new cases answer source-based questions, preserve unknown facts and condit
   await page.locator('[data-id="redEye"][data-value="true"]').click();
   await expect(
     page.locator('[data-candidate="viral_conjunctivitis"]'),
-  ).toHaveAttribute("data-comparison", "consistent");
+  ).toHaveAttribute("data-comparison", "insufficient");
   await expect(page.locator('[data-candidate="urticaria"]')).toHaveAttribute(
     "data-comparison",
     "conflict",
@@ -693,9 +693,31 @@ test("conjunctivitis remains among candidates when reported fever, vomiting, dia
   await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
     .toHaveAttribute("data-comparison", "consistent");
   await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
-    .toContainText("線索吻合");
+    .toContainText("無法判斷");
   await page.locator('[data-symptom-card="redEye"] [data-value="true"]').click();
   await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
     .toHaveAttribute("data-comparison", "consistent");
   await expect(page.locator(".candidate-disclaimer")).toHaveCount(0);
+});
+
+test("flu turns gray after fever=no, returns green when unresolved, and confirms only after all defined facts", async ({ page }) => {
+  await startStudent(page, "doctor", 1);
+  if ((await page.locator(".candidate-details").getAttribute("open")) === null)
+    await page.locator(".candidate-details summary").click();
+  const flu = page.locator('[data-candidate="flu"]');
+  await expect(flu).toHaveAttribute("data-comparison", "unrecorded");
+  await expect(flu).toHaveClass(/uncertain/);
+  await page.locator('[data-symptom-card="fever"] [data-value="false"]').click();
+  await expect(flu).toHaveAttribute("data-comparison", "conflict");
+  await expect(flu).toHaveClass(/inconsistent/);
+  await page.locator('[data-symptom-card="fever"] [data-value="true"]').click();
+  await expect(flu).toHaveAttribute("data-comparison", "insufficient");
+  await expect(flu).toHaveClass(/uncertain/);
+  const data = cases.find(c => c.id === "flu");
+  for (const [id, value] of Object.entries(data.evidence))
+    if (typeof value === "boolean")
+      await page.locator(`[data-symptom-card="${id}"] [data-value="${value}"]`).click();
+  await expect(flu).toHaveAttribute("data-comparison", "consistent");
+  await expect(flu).toHaveClass(/confirmed/);
+  await expect(flu).toContainText("與線索相符");
 });

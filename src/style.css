@@ -1785,3 +1785,28 @@ dialog p {
     margin-bottom: 5px;
   }
 }
+
+/* Guess-Who deduction: possible and fully matched remain green; contradicted cases gray. */
+.candidate.uncertain {
+  background: #edf8f3;
+  border: 1.5px solid #93c8b0;
+}
+.candidate.uncertain .candidate-icon,
+.candidate.uncertain .candidate-label { color: #136c55; }
+.candidate.confirmed {
+  background: #c6efce;
+  border: 2px solid #18804d;
+  box-shadow: inset 0 0 0 1px #18804d0c, 0 3px 7px #1e8d4520;
+}
+.candidate.confirmed h3 { color: #114b32; }
+.candidate.confirmed .candidate-icon,
+.candidate.confirmed .candidate-label { color: #12633e; font-weight: 750; }
+.candidate.inconsistent {
+  background: #eceff1;
+  border: 1.5px solid #d5dce2;
+  box-shadow: none;
+  opacity: .82;
+}
+.candidate.inconsistent h3,
+.candidate.inconsistent .candidate-icon,
+.candidate.inconsistent .candidate-label { color: #6c7782; }

@@ -52,3 +52,9 @@ test("music toggle is independent from always-on interaction effects", async () 
     setMusicEnabled(before);
   }
 });
+
+test("background track uses supplied local M4A rather than generating a substitute tune", () => {
+  const source = readFileSync(new URL("../src/ui/music.js", import.meta.url), "utf8");
+  assert.match(source, /audio\/background\.m4a/);
+  assert.doesNotMatch(source, /createOscillator|const melody/);
+});

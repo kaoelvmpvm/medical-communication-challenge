@@ -28,21 +28,24 @@ export function createSession(stage = 1) {
   };
 }
 export function comparison(evidence, records) {
-  const entries = Object.entries(records).filter(
-    ([, value]) => typeof value === "boolean",
-  );
+  const entries = Object.entries(records).filter(([, value]) => typeof value === "boolean");
   if (!entries.length) return "unrecorded";
-  let insufficient = false;
-  for (const [id, value] of entries) {
-    const fact = evidence[id];
-    if (typeof fact !== "boolean") {
-      insufficient = true;
-      continue;
-    }
-    if (fact !== value) return "conflict";
+
+  // An explicit contradiction eliminates this fictional case.
+  // Unknown and not-applicable facts must never be interpreted as "no".
+  for (const [id, answer] of entries) {
+    if (typeof evidence[id] === "boolean" && evidence[id] !== answer)
+      return "conflict";
   }
-  return insufficient ? "insufficient" : "consistent";
+
+  // Only a complete check of every defined yes/no fact can confirm a match.
+  // A partial match remains a possible (green) candidate.
+  const fullyChecked = Object.entries(evidence)
+    .filter(([, fact]) => typeof fact === "boolean")
+    .every(([id, fact]) => records[id] === fact);
+  return fullyChecked ? "consistent" : "insufficient";
 }
+
 export function matches(records) {
   return cases
     .filter((entry) => comparison(entry.evidence, records) !== "conflict")

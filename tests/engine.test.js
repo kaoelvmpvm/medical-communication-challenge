@@ -5,6 +5,7 @@ import { symptoms } from "../src/data/symptoms.js";
 import { questions, questionApplies } from "../src/data/questions.js";
 import {
   createSession,
+  comparison,
   matches,
   mark,
   enterRole,
@@ -209,5 +210,16 @@ test("legacy case-pool completion transitions through all three stages without l
     assert.equal(s.finished, true);
     assert.equal(s.role, null);
     assert.equal(nextStage(s), stage < 3);
+  }
+});
+
+test("a single matching symptom cannot fully confirm a multi-symptom fictional case", () => {
+  for (const entry of cases) {
+    const facts = Object.fromEntries(Object.entries(entry.evidence).filter(([,v]) => typeof v === "boolean"));
+    assert.equal(comparison(entry.evidence, facts), "consistent");
+    if (Object.keys(facts).length > 1) {
+      const first = Object.keys(facts)[0];
+      assert.equal(comparison(entry.evidence, {[first]:facts[first]}), "insufficient");
+    }
   }
 });
