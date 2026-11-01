@@ -46,9 +46,9 @@ test("portable codes round-trip all six cases and fifteen stage-round pairs; inv
   assert.throws(() => readCode("123"));
   assert.throws(() => makeCode(6, 1, 1));
 });
-test("each group has five distinct cases for all three stages and five rotating patient seats", () => {
+test("coded stages two and three retain five distinct cases and five rotating patient seats", () => {
   const group = book().classes[0].groups[0];
-  for (const stage of [1, 2, 3]) {
+  for (const stage of [2, 3]) {
     const plan = group.plans[stage].map(readCode);
     assert.equal(new Set(plan.map((item) => item.caseIndex)).size, 5);
     assert.deepEqual(
@@ -191,7 +191,7 @@ test("CSV includes both independent stages and UTF-8 BOM, quotes commas and neut
   assert.ok(exportCsv(value).includes('"815,""A"""'));
 });
 test("independent doctor never receives an assigned case and guesses count as questions without automatic grading", () => {
-  const doctor = createIndependentSession("doctor", 1, 1);
+  const doctor = createIndependentSession("doctor", 2, 1);
   assert.equal(doctor.caseIndex, null);
   assert.equal(guess(doctor, "cold"), null);
   assert.equal(manualGuess(doctor, "cold"), true);

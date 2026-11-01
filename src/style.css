@@ -1736,3 +1736,52 @@ dialog p {
     display: none;
   }
 }
+/* Stage one is a continuous recording surface; other stages keep their grouped layout. */
+.phase-one-record .phase-one-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.phase-one-record .record-button.yes {
+  color: #176847;
+  background: #edf8f0;
+  border-color: #68a487;
+}
+.phase-one-record .record-button.no {
+  color: #a4373b;
+  background: #fff0f0;
+  border-color: #ca8589;
+}
+.phase-one-record .record-button[aria-pressed="true"] {
+  color: white;
+}
+.phase-one-record .record-button.yes[aria-pressed="true"] {
+  background: #176847;
+}
+.phase-one-record .record-button.no[aria-pressed="true"] {
+  background: #a4373b;
+}
+@media (max-width: 950px) {
+  .phase-one-record .phase-one-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .phase-one-record .phase-one-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+@media (max-width: 340px) {
+  .phase-one-record .phase-one-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.phase-one-record .symptom-heading h2 {
+  font-size: 16px;
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .phase-one-record .symptom-heading h2 {
+    margin-bottom: 5px;
+  }
+}

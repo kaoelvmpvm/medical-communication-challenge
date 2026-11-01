@@ -63,6 +63,7 @@ export function enterRole(session) {
 }
 export function countOralQuestion(session) {
   if (
+    session.independent ||
     session.stage !== 1 ||
     session.role !== "doctor" ||
     session.handoff ||
@@ -211,7 +212,7 @@ export function manualGuess(session, diseaseId) {
   if (
     !session.independent ||
     session.role !== "doctor" ||
-    session.stage === 3 ||
+    session.stage !== 2 ||
     !cases.some((entry) => entry.id === diseaseId)
   )
     return false;

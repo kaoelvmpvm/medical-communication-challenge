@@ -52,6 +52,27 @@ export function rankingList(entry, stage) {
     .join("");
 }
 function plans(entry, stage) {
+  if (stage === 1)
+    return `<section class="plan-area"><div class="notice"><p>第一階段由病人平板在開始新回合時，從六種既有病例等機率隨機抽取。各回合可能抽到相同病例；不分配病例碼，也不向教師或醫師自動揭露答案。重新整理沿用該分頁的同回合病例。</p></div>${[
+      ...entry.groups,
+    ]
+      .sort((a, b) => a.number - b.number)
+      .map(
+        (group) =>
+          `<section class="panel group-plan" data-plan-group="${group.id}"><h3>第 ${group.number} 組</h3><div class="round-plan-grid">${group.seats
+            .map(
+              (seat, index) =>
+                `<article><span class="eyebrow">第 ${index + 1} 回合</span><strong>病人：${e(seat)} 號</strong><p>醫師：${group.seats
+                  .filter((_, i) => i !== index)
+                  .map(e)
+                  .join(
+                    "、",
+                  )} 號</p><p>病人按開始後自行隨機載入；僅口頭回答是或否。</p></article>`,
+            )
+            .join("")}</div></section>`,
+      )
+      .join("")}</section>`;
+
   return `<section class="plan-area"><div class="notice"><p>每組本階段的五份病例不重複。請私下把「病例碼」交給當回合病人；醫師不需要輸入，也不要讓醫師觀看這張安排表。${stage === 3 ? "本階段僅練習，不建立競賽成績。" : ""}</p></div>${[
     ...entry.groups,
   ]

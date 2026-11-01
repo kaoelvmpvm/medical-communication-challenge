@@ -1,0 +1,139 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { cases } from "../src/data/cases.js";
+import {
+  drawCaseIndex,
+  createPatientRounds,
+  PATIENT_ROUNDS_KEY,
+} from "../src/game/random-round.js";
+import {
+  createIndependentSession,
+  countOralQuestion,
+  manualGuess,
+} from "../src/game/engine.js";
+import { doctor } from "../src/ui/screens.js";
+import { studentStatus, patientLoading } from "../src/ui/portal.js";
+function memory() {
+  const values = new Map();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  };
+}
+test("unbiased rejection sampling covers exactly six unchanged cases with equal accepted buckets", () => {
+  assert.equal(cases.length, 6);
+  const counts = Array(6).fill(0);
+  for (let value = 0; value < 600; value++)
+    counts[drawCaseIndex(() => value)]++;
+  assert.deepEqual(counts, [100, 100, 100, 100, 100, 100]);
+  const sequence = [4294967295, 4294967294, 4294967293, 4294967292, 5];
+  let calls = 0;
+  assert.equal(
+    drawCaseIndex(() => sequence[calls++]),
+    5,
+  );
+  assert.equal(calls, 5);
+  assert.throws(() => drawCaseIndex(() => -1));
+  assert.throws(() => drawCaseIndex(() => 2 ** 32));
+});
+test("start draws once per round, refresh restores, and repeated starts/revisits never redraw", () => {
+  const storage = memory();
+  let calls = 0;
+  const rounds = createPatientRounds(storage, () => calls++);
+  assert.equal(rounds.resume(), null);
+  assert.equal(calls, 0);
+  assert.deepEqual(rounds.start(1), { round: 1, caseIndex: 0 });
+  assert.deepEqual(rounds.start(1), { round: 1, caseIndex: 0 });
+  assert.equal(calls, 1);
+  assert.deepEqual(
+    createPatientRounds(storage, () => {
+      throw new Error("must not redraw");
+    }).resume(),
+    { round: 1, caseIndex: 0 },
+  );
+  rounds.pause();
+  assert.equal(rounds.resume(), null);
+  assert.deepEqual(rounds.start(1), { round: 1, caseIndex: 0 });
+  assert.equal(calls, 1);
+  assert.deepEqual(rounds.start(2), { round: 2, caseIndex: 1 });
+  assert.equal(calls, 2);
+  assert.deepEqual(rounds.start(1), { round: 1, caseIndex: 0 });
+  assert.equal(calls, 2);
+});
+test("all five rounds are retained independently with no teacher records written", () => {
+  const storage = memory();
+  storage.setItem("teacher-example", "unchanged");
+  let calls = 0;
+  const rounds = createPatientRounds(storage, () => calls++);
+  for (let round = 1; round <= 5; round++)
+    assert.equal(rounds.start(round).caseIndex, round - 1);
+  for (let round = 5; round >= 1; round--)
+    assert.equal(rounds.start(round).caseIndex, round - 1);
+  assert.equal(calls, 5);
+  assert.equal(storage.getItem("teacher-example"), "unchanged");
+  assert.throws(() => rounds.start(6));
+  assert.equal(calls, 5);
+});
+test("damaged state is never discarded or randomly replaced", () => {
+  for (const raw of [
+    "bad json",
+    JSON.stringify({ version: 2, rounds: {}, activeRound: null }),
+    JSON.stringify({ version: 1, rounds: { 1: 6 }, activeRound: 1 }),
+    JSON.stringify({ version: 1, rounds: {}, activeRound: 1 }),
+  ]) {
+    const storage = memory();
+    storage.setItem(PATIENT_ROUNDS_KEY, raw);
+    let calls = 0;
+    const rounds = createPatientRounds(storage, () => {
+      calls++;
+      return 0;
+    });
+    assert.throws(() => rounds.start(1));
+    assert.throws(() => rounds.resume());
+    assert.equal(calls, 0);
+    assert.equal(storage.getItem(PATIENT_ROUNDS_KEY), raw);
+  }
+});
+test("failed persistence exposes no unsaved case and preserves an already loaded round", () => {
+  const storage = memory();
+  const rounds = createPatientRounds(storage, () => 3);
+  rounds.start(1);
+  const before = storage.getItem(PATIENT_ROUNDS_KEY);
+  storage.setItem = () => {
+    throw new Error("quota");
+  };
+  assert.throws(() => rounds.start(2), /無法保存/);
+  assert.equal(storage.getItem(PATIENT_ROUNDS_KEY), before);
+  assert.deepEqual(rounds.resume(), { round: 1, caseIndex: 3 });
+});
+test("stage-one doctor renders eighteen continuous records, no categories, progress, guessing or counting", () => {
+  const s = createIndependentSession("doctor", 1, 1);
+  const html = doctor(
+    s,
+    cases.map(({ id, disease }) => ({ id, disease })),
+    cases.map((item) => item.id),
+  );
+  assert.equal((html.match(/data-symptom-card=/g) || []).length, 18);
+  assert.equal((html.match(/data-candidate=/g) || []).length, 6);
+  for (const forbidden of [
+    "oral-panel",
+    "decision-panel",
+    "system-nav",
+    "symptom-group",
+    "data-record-progress",
+    'data-action="count"',
+    'data-action="open-guess"',
+  ])
+    assert.ok(!html.includes(forbidden));
+  assert.ok(html.includes('data-action="open-clear"'));
+  assert.ok(!studentStatus(s, 6).includes("data-question-count"));
+  assert.equal(countOralQuestion(s), false);
+  assert.equal(manualGuess(s, "cold"), false);
+  assert.equal(s.questionCount, 0);
+  assert.ok(!patientLoading(1).includes("<input"));
+  assert.ok(patientLoading(2).includes('name="code"'));
+  assert.ok(patientLoading(3).includes('name="code"'));
+  const stage2 = createIndependentSession("doctor", 2, 1);
+  assert.equal(manualGuess(stage2, "cold"), true);
+  assert.ok(studentStatus(stage2, 6).includes("data-question-count"));
+});
