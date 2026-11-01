@@ -1,5 +1,7 @@
 import "./style.css";
 import "./teacher.css";
+import "./art.css";
+import { displayVersion } from "./data/version.js";
 import { cases, patientView } from "./data/cases.js";
 import { symptoms } from "./data/symptoms.js";
 import { questions, questionsForCase } from "./data/questions.js";
@@ -27,12 +29,12 @@ import {
   patientLoading,
 } from "./ui/portal.js";
 import { button as b, escapeHtml as e, notice } from "./ui/components.js";
-import { caseArtUrl } from "./data/art-assets.js";
+import { caseArtUrl, portalArt } from "./data/art-assets.js";
 import { artPlaceholder } from "./ui/case-art.js";
 import { observeBodyMap } from "./ui/body-lines.js";
 import { TeacherApp } from "./teacher/controller.js";
 const app = document.querySelector("#app");
-app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><span aria-hidden="true">＋</span>醫問到底<span class="brand-punctuation">！</span></a><span class="header-subtitle">病情解碼挑戰</span><span class="version-label">教學模擬 · 1.4</span><button class="button quiet" type="button" data-action="home">角色入口</button></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>醫問到底！——病情解碼挑戰</span><span>教學模擬・不是醫療診斷工具</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
+app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口">醫問到底<span class="brand-punctuation">！</span></a><button class="button quiet" type="button" data-action="home">角色入口</button></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>教學模擬・不是醫療診斷工具｜版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
 const main = document.querySelector("#main"),
   statusHost = document.querySelector("#status-host"),
   toolsHost = document.querySelector("#tools-host"),
@@ -93,7 +95,7 @@ function goHome() {
   if (session)
     return confirm(
       "回到角色入口？",
-      "這台學生平板的輔助紀錄會清除；教師裝置上的正式成績不受影響。",
+      "目前的練習紀錄會清除；教師成績不受影響。",
       () => {
         pauseRandomCase();
         session = null;
@@ -117,7 +119,7 @@ function render({ focus = true } = {}) {
     /* Case retention still works when browser history is unavailable. */
   }
   clear();
-  if (view === "portal") main.innerHTML = portal();
+  if (view === "portal") main.innerHTML = portal(portalArt);
   else if (view === "login") main.innerHTML = login();
   else if (view === "setup") main.innerHTML = setup(role, session);
   else if (view === "student" && session) {
@@ -126,9 +128,11 @@ function render({ focus = true } = {}) {
     const independentNotice = notice(
       session.role === "doctor"
         ? session.stage === 1
-          ? "四位醫師輪流口頭提問，病人只回答是或否。猜疾病也直接口頭提出；所有問題數與完成數由教師手動登記。症狀紀錄僅在此平板操作，不會同步。"
-          : "此平板只保存本回合的輔助紀錄，不會與其他醫師同步。正式提問數與完成數由教師手動登記，疾病猜測也算一次提問。"
-        : "這是你的獨立平板，不會傳送或接收其他平板的內容。請依教師安排與同組醫師口頭互動。",
+          ? "輪流口頭提問，依病人的回答記錄症狀。猜測疾病也口頭提出，由教師登記成績。"
+          : session.stage === 2
+            ? "選好問題後口頭詢問，再記錄病人的回答。猜測疾病也算一次提問，由教師登記。"
+            : "先聽病人完整描述，再回述重點並補充詢問。此階段不計分。"
+        : "請依情境口頭回應醫師，保持病例內容不讓醫師看到。",
     );
     if (session.role === "doctor") {
       main.innerHTML =
@@ -217,7 +221,7 @@ function loadStudent(data) {
 }
 function showGuess() {
   modal(
-    `<h2 id="dialog-title">提出這次疾病猜測</h2><p>請口頭告訴教師。確認猜測將增加一次本機輔助提問數，正確與否由教師判定。</p><form id="guess-form"><fieldset class="guess-options"><legend class="sr-only">選擇疾病</legend>${cases.map((entry) => `<label><input type="radio" name="disease" value="${entry.id}" required><span>${e(entry.disease)}</span></label>`).join("")}</fieldset><div class="dialog-actions">${b("繼續推理", "cancel")}<button type="submit" class="button primary" disabled id="confirm-guess">確認提出猜測</button></div></form>`,
+    `<h2 id="dialog-title">提出這次疾病猜測</h2><p>請口頭告訴教師。猜測也算一次提問，請教師判定並登記。</p><form id="guess-form"><fieldset class="guess-options"><legend class="sr-only">選擇疾病</legend>${cases.map((entry) => `<label><input type="radio" name="disease" value="${entry.id}" required><span>${e(entry.disease)}</span></label>`).join("")}</fieldset><div class="dialog-actions">${b("繼續推理", "cancel")}<button type="submit" class="button primary" disabled id="confirm-guess">確認提出猜測</button></div></form>`,
   );
 }
 function updateRecords(id) {
@@ -317,7 +321,7 @@ app.addEventListener("click", (event) => {
       "清空症狀紀錄？",
       session.stage === 1
         ? "症狀卡片將恢復未確認，教師紀錄不受影響。"
-        : "此平板的症狀將恢復未確認，累積輔助提問數保留。教師紀錄不受影響。",
+        : "症狀將恢復未確認，提問次數保留。教師紀錄不受影響。",
       () => {
         retry(session);
         render();
@@ -408,7 +412,7 @@ app.addEventListener("submit", (event) => {
       close();
       render({ focus: false });
       modal(
-        `<h2 id="dialog-title">猜測已記入本機輔助次數</h2><p>你提出「${e(cases.find((entry) => entry.id === diseaseId).disease)}」。請教師判定並登記正式提問數；猜錯可以繼續問，或清空紀錄重新整理，不會歸零提問數。</p><p>這台醫師平板沒有指定病例答案，不會自行判定猜對或猜錯。</p>${b("繼續問診", "cancel", { kind: "primary" })}`,
+        `<h2 id="dialog-title">已提出這次猜測</h2><p>你提出「${e(cases.find((entry) => entry.id === diseaseId).disease)}」。請教師判定並登記正式提問數；猜錯可以繼續問，或清空紀錄重新整理，不會歸零提問數。</p>${b("繼續問診", "cancel", { kind: "primary" })}`,
       );
     }
   }
@@ -448,7 +452,7 @@ app.addEventListener("change", (event) => {
       event.target.value = session.pending || "";
       confirm(
         "更換回答的問題？",
-        "這台平板目前的選擇與解析將清除。先前已口頭分享的回答不會自動通知醫師。",
+        "目前的選擇與解析將清除，請重新選擇回答。",
         apply,
       );
     } else apply();
@@ -524,13 +528,26 @@ try {
 } catch {
   /* Keep the neutral portal; start() reports damaged/unavailable storage without redrawing. */
 }
-render({ focus: false });
-
 app.addEventListener(
   "error",
   (event) => {
     if (event.target.matches?.(".case-art img"))
       event.target.closest(".case-art-frame").innerHTML = artPlaceholder;
+    else if (event.target.dataset?.artKind) {
+      const image = event.target;
+      image.hidden = true;
+      if (image.dataset.artKind === "logo")
+        image
+          .closest("h1")
+          .querySelector(".logo-text")
+          .classList.remove("sr-only");
+      else
+        image.parentElement
+          .querySelector(".home-art-fallback,.role-art-fallback")
+          ?.removeAttribute("hidden");
+    }
   },
   true,
 );
+
+render({ focus: false });

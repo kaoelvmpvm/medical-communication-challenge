@@ -1,0 +1,104 @@
+[
+  {
+    "path": "public/art/home/title.webp",
+    "width": 2172,
+    "height": 724,
+    "sha256": "1e66196fb7a10c46771cf00ce541ac80272d6e4cd1cdae9258aa1a4821b34645"
+  },
+  {
+    "path": "public/art/home/hero.webp",
+    "width": 1600,
+    "height": 900,
+    "sha256": "c7fb4b563d6235d2234d0856eeb8de1b782c6f1a23b1db0f484d7519d8e1aca3"
+  },
+  {
+    "path": "public/art/roles/doctor.webp",
+    "width": 1024,
+    "height": 1024,
+    "sha256": "04a99d2f80566b852ad064cb07e6dca498f423c4f30810ac642132b047b9fa4d"
+  },
+  {
+    "path": "public/art/roles/patient.webp",
+    "width": 1024,
+    "height": 1024,
+    "sha256": "5f2a3f6ca0bebcc7b2036bff743d797cbe819a3f09460e6ad1fffaf6320139f3"
+  },
+  {
+    "path": "public/art/roles/teacher.webp",
+    "width": 1024,
+    "height": 1024,
+    "sha256": "a38177f005999e444f5a8c851c7263679cd901d68569ec6f57d311e73d3bc4d7"
+  },
+  {
+    "path": "public/art/cases/cold.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "9eb5e9b9959e6c5c3146b6938244f85229f874cf33fbad7af29f15d977b95f62"
+  },
+  {
+    "path": "public/art/cases/flu.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "32c2407a5b7990013228026a0154a4a3ae14622b4edfe6a8f1d9c25ce88d3bc0"
+  },
+  {
+    "path": "public/art/cases/allergy.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "e53e24d98c0f71def15e9f432b7494afa7f82660bfcf7fa88c97e1b776d224a6"
+  },
+  {
+    "path": "public/art/cases/gastro.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "13699be3581609526fc81d47530d567c4b59302db4322578a937a0c792761e8f"
+  },
+  {
+    "path": "public/art/cases/migraine.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "28165a2c05ea48a9fe204593f3517a9a3d827a4ea42db207c0b5ef4c0156afc1"
+  },
+  {
+    "path": "public/art/cases/uti.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "697c8f7faf16fd76c28686c78334651d8653196ebc37f0cbd1f2a9aa78f0b8cb"
+  },
+  {
+    "path": "public/art/cases/viral_conjunctivitis.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "e3a80ec1a148e3ae14af5c2eb2d02f26dca8256d080e32bd67b8715d23ce4055"
+  },
+  {
+    "path": "public/art/cases/urticaria.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "86d523a4071ce1be2e4202329c445a39c194d8ead38d5ebbc531ebb0eabd54b3"
+  },
+  {
+    "path": "public/art/cases/gerd.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "f60940db8f09e4153f279872a0f45ec3cc7ff20593dcf07f124ea2ffe0d2773e"
+  },
+  {
+    "path": "public/art/cases/tension_headache.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "88ebfcc45739983f5d72693e03e84dcb7fcb16b9b64d017aeb11f038d390f363"
+  },
+  {
+    "path": "public/art/cases/dysmenorrhea.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "d9f39b8989538193cd1e5bc967f700b241ef4ce379334c01954db1b7f1895061"
+  },
+  {
+    "path": "public/art/cases/otitis_media.webp",
+    "width": 800,
+    "height": 1000,
+    "sha256": "e8970ac2a558d968f8cc1f4e9a9acdc29e97f4e7cac1ef72146706451da1511d"
+  }
+]

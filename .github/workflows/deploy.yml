@@ -45,6 +45,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
@@ -54,3 +55,13 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Checkout artwork verification sources
+        uses: actions/checkout@v4
+      - name: Set up Node.js for deployed checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify all 17 deployed artwork URLs
+        run: node scripts/verify-deployed-art.mjs "$PAGE_URL"
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}

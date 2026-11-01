@@ -1,4 +1,4 @@
-# 醫問到底！——病情解碼挑戰 V1.4
+# 醫問到底！ V1.5
 
 Vite + Vanilla JavaScript 的醫病溝通教具。**五人一組、每人一台平板**，四位醫師現場討論、一位病人描述感受，每階段共五回合輪替。教師以自己的裝置管理班級、安排病例、手動記錄正式成績。
 
@@ -58,7 +58,9 @@ C07～C12 的 168 個判定值照使用者表格逐項保存；C01～C06 敘述�
 
 第二階段新增眼睛、皮膚、耳朵、胸口與條件式經期問題。經期題只在 C11 病人的選單中出現；其他病例不產生「沒有月經」等虛構答覆，也不推測性別。不適用或未知資訊不能當成確定沒有。最佳回答以病例原文、判定表或提供的摘要為依據，位置有穩定變化，也不是一律最長。
 
-病人新增「病例情境美術圖」固定比例佔位，現在**沒有產生任何插畫**；人體圖仍是主要工具。日後將 `<病例ID>.webp` 放到 `public/art/cases/` 並重新建置即可，例如 `viral_conjunctivitis.webp`。建置時只登錄實際存在的檔案，缺圖顯示「劇情圖片」，不發送猜測圖片 URL 的請求；錯誤圖片亦會退回佔位。插畫不得包含疾病名稱或答案。
+V1.5 整合使用者提供的17張 WebP：首頁 Logo／主視覺、三張角色圖及十二病例圖，原始檔案與路徑完整保留。首頁三張卡各為單一可鍵盤與觸控操作的按鈕，不含巢狀按鈕。病人圖採4:5完整構圖，人體圖仍是主要資訊工具；桌面並排，平板與手機依空間上下配置。缺圖顯示「劇情圖片」，載入失敗也會退回佔位。
+
+Vite 建置時列出 `public/art/` 實際存在的 WebP，以既有 Pages 子路徑產生 URL，不另外打包重複圖片。新增、移除美術後請重新啟動開發伺服器／建置。所有圖片 alt 均不包含疾病答案。頁尾版本由 `package.json` 統一產生，署名「板橋國中 高勳頊老師設計開發」。
 
 ## 教師正式紀錄與排名
 
@@ -103,10 +105,10 @@ C07～C12 的 168 個判定值照使用者表格逐項保存；C01～C06 敘述�
 ## 測試
 
 ```sh
-npm test                     # 40 項單元／資料／狀態測試，包含原有回歸
+npm test                     # 42 項單元／資料／狀態測試，包含原有回歸
 npm run build
 npx playwright install chromium
-npm run test:e2e              # 5 種尺寸 × 8 項操作驗收
+npm run test:e2e              # 5 種尺寸 × 11 項操作驗收
 npx playwright show-report
 ```
 
@@ -118,10 +120,16 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 
 尺寸：1440×900、1024×768 橫向平板、768×1024 直向平板、390×844、375×667。測試包含五個獨立瀏覽器環境模擬五台學生平板、教師保存與備份、十二病例／28 症狀回歸及 axe WCAG A／AA 自動掃描。
 
-測試報告及截圖在忽略的 `playwright-report/`、`test-results/`；本次精選畫面與驗收紀錄見 [V1.4 驗收紀錄](docs/v1.4-validation.md)；[V1.3](docs/v1.3-validation.md) 保留作為歷史紀錄；[V1.2 驗收](docs/v1.2-validation.md) 保留作為歷史資料。畫面證據僅使用虛構座號，沒有真實班級名冊。舊的 [V1.1 紀錄](docs/validation.md) 保留作為歷史資料，不代表本版操作流程。
+測試報告及截圖在忽略的 `playwright-report/`、`test-results/`；本次精選畫面與驗收紀錄見 [V1.5 驗收紀錄](docs/v1.5-validation.md)；[V1.4](docs/v1.4-validation.md) 保留作為歷史紀錄；[V1.3](docs/v1.3-validation.md) 保留作為歷史紀錄；[V1.2 驗收](docs/v1.2-validation.md) 保留作為歷史資料。畫面證據僅使用虛構座號，沒有真實班級名冊。舊的 [V1.1 紀錄](docs/validation.md) 保留作為歷史資料，不代表本版操作流程。
 
 ## GitHub Pages
 
 沿用原 `vite.config.js` 的 `/medical-communication-challenge/` 與 `.github/workflows/deploy.yml`。依目前授權完成測試後直接提交、推送 `main`，之後執行測試、建置及 Pages 部署；Pull Request 只測試與建置。
 
 儲存庫 Pages 的 Source 需選擇 **GitHub Actions**。部署成功後網址：`https://kaoelvmpvm.github.io/medical-communication-challenge/`。本機建置通過不等於遠端新版已部署，請以 Actions 結果為準。
+
+部署後的 Actions 步驟會逐一要求17張正式圖片 URL 回傳 `image/webp` 並核對附件 SHA-256，任何缺圖或內容不符皆使檢查失敗。可手動執行：
+
+```sh
+node scripts/verify-deployed-art.mjs https://kaoelvmpvm.github.io/medical-communication-challenge/
+```

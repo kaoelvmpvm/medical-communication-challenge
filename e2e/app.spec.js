@@ -375,7 +375,9 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
   await page.getByRole("button", { name: "猜測疾病", exact: true }).click();
   await page.getByRole("radio", { name: "一般感冒", exact: true }).check();
   await page.getByRole("button", { name: "確認提出猜測" }).click();
-  await expect(page.locator("dialog")).toContainText("沒有指定病例答案");
+  await expect(page.locator("dialog")).toContainText(
+    "請教師判定並登記正式提問數",
+  );
   await page.getByRole("button", { name: "繼續問診" }).click();
   await expect(page.locator("[data-question-count]")).toHaveText("1");
   await page.getByRole("button", { name: "清空症狀紀錄" }).click();
@@ -586,7 +588,7 @@ test("stage-one random cases survive refresh, redraws and revisits; only confirm
   await expect(page.locator(".body-note")).toHaveCount(0);
 });
 
-test("teacher can query all twelve internal codes; patient sees only stable identifier and art placeholder", async ({
+test("teacher can query all twelve internal codes; patient sees only stable identifier and supplied case art", async ({
   page,
 }, info) => {
   const { diseaseCatalog } = await import("../src/data/disease-catalog.js");
@@ -617,8 +619,18 @@ test("teacher can query all twelve internal codes; patient sees only stable iden
   });
   await startStudent(page, "patient", 2, 1, 0);
   await expect(page.locator(".disease-code strong")).toHaveText("4726");
-  await expect(page.locator(".case-art")).toContainText("劇情圖片");
-  await expect(page.locator(".case-art img")).toHaveCount(0);
+  await expect(page.locator(".case-art img")).toHaveAttribute(
+    "src",
+    /\/medical-communication-challenge\/art\/cases\/cold\.webp$/,
+  );
+  await expect(page.locator(".case-art img")).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator(".case-art img")
+        .evaluate((img) => img.complete && img.naturalWidth === 800),
+    )
+    .toBe(true);
   for (const entry of diseaseCatalog)
     await expect(page.locator("body")).not.toContainText(entry.disease);
   await expect(
@@ -626,7 +638,7 @@ test("teacher can query all twelve internal codes; patient sees only stable iden
   ).toHaveCount(0);
   await layout(page);
   await axe(page);
-  await snap(page, info, "patient-code-art-placeholder");
+  await snap(page, info, "patient-code-art");
   expect(failures).toEqual([]);
 });
 
