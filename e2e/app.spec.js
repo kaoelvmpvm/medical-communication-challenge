@@ -721,3 +721,27 @@ test("flu turns gray after fever=no, returns green when unresolved, and confirms
   await expect(flu).toHaveClass(/confirmed/);
   await expect(flu).toContainText("與線索相符");
 });
+
+test("possible diseases show pale green, conflicts gray, and the music volume slider updates in place", async ({ page }) => {
+  await page.goto(root);
+  const volume = page.getByRole("slider", { name: "背景音樂音量" });
+  await expect(volume).toBeVisible();
+  await volume.evaluate(input => {
+    input.value = "35";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await expect(page.locator("#music-volume-value")).toHaveText("35%");
+  await page.reload();
+  await expect(volume).toHaveValue("35");
+  await startStudent(page, "doctor", 1);
+  const cold = page.locator('[data-candidate="cold"]');
+  await expect(cold).toHaveClass(/uncertain/);
+  const green = await cold.evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(green).toBe("rgb(237, 248, 243)");
+  await page.locator('[data-symptom-card="fever"] [data-value="false"]').click();
+  const flu = page.locator('[data-candidate="flu"]');
+  await expect(flu).toHaveClass(/inconsistent/);
+  const gray = await flu.evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(gray).toBe("rgb(236, 239, 241)");
+  await expect(page.locator(".candidate.uncertain").first()).toHaveCSS("border-top-style", "solid");
+});

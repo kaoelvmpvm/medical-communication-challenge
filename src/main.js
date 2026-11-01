@@ -2,7 +2,7 @@ import "./style.css";
 import "./teacher.css";
 import "./art.css";
 import { playUiSound } from "./ui/sound.js";
-import { isMusicEnabled, setMusicEnabled, activateMusicOnGesture } from "./ui/music.js";
+import { isMusicEnabled, setMusicEnabled, activateMusicOnGesture, getMusicVolume, setMusicVolume } from "./ui/music.js";
 import { displayVersion } from "./data/version.js";
 import { cases, patientView } from "./data/cases.js";
 import { symptoms } from "./data/symptoms.js";
@@ -35,7 +35,7 @@ import { artPlaceholder } from "./ui/case-art.js";
 import { observeBodyMap } from "./ui/body-lines.js";
 import { TeacherApp } from "./teacher/controller.js";
 const app = document.querySelector("#app");
-app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><img class="header-logo" data-art-kind="header-logo" src="${e(portalArt.title || "")}" width="2172" height="724" alt="醫問到底！"><span class="brand-fallback" hidden>醫問到底！</span></a><div class="header-actions"><button class="music-toggle" type="button" data-action="toggle-music" aria-pressed="${isMusicEnabled()}" aria-label="${isMusicEnabled() ? "關閉背景音樂" : "開啟背景音樂"}">♫ 音樂${isMusicEnabled() ? "開" : "關"}</button></div></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
+app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><img class="header-logo" data-art-kind="header-logo" src="${e(portalArt.title || "")}" width="2172" height="724" alt="醫問到底！"><span class="brand-fallback" hidden>醫問到底！</span></a><div class="header-actions"><div class="music-controls" role="group" aria-label="背景音樂設定"><button class="music-toggle" type="button" data-action="toggle-music" aria-pressed="${isMusicEnabled()}" aria-label="${isMusicEnabled() ? "關閉背景音樂" : "開啟背景音樂"}">♫ 音樂${isMusicEnabled() ? "開" : "關"}</button><label class="music-volume" for="music-volume-slider"><span class="music-volume-label">音量</span><input type="range" id="music-volume-slider" min="0" max="100" step="1" value="${getMusicVolume()}" aria-label="背景音樂音量" aria-controls="music-volume-value"><output id="music-volume-value" for="music-volume-slider">${getMusicVolume()}%</output></label></div></div></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
 const main = document.querySelector("#main"),
   statusHost = document.querySelector("#status-host"),
   toolsHost = document.querySelector("#tools-host"),
@@ -498,6 +498,13 @@ app.addEventListener("change", (event) => {
   }
 });
 app.addEventListener("input", (event) => {
+  if (event.target.id === "music-volume-slider") {
+    const percentage = setMusicVolume(event.target.value);
+    const output = document.querySelector("#music-volume-value");
+    if (output) output.value = `${percentage}%`;
+    activateMusicOnGesture();
+    return;
+  }
   if (
     event.target.id === "followup-notes" &&
     session?.role === "doctor" &&

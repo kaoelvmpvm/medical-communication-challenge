@@ -709,15 +709,6 @@ textarea {
     max-width: none;
   }
 }
-.candidate.uncertain {
-  border-style: dashed;
-  background: #f5f6f8;
-  border-color: #9aaeb9;
-}
-.candidate.uncertain .candidate-label,
-.candidate.uncertain .candidate-icon {
-  color: #526479;
-}
 @media (min-width: 951px) and (max-width: 1200px) {
   .candidate-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -41,20 +41,42 @@ test("student stages are three selectable game buttons and medical technical cop
   assert.match(html, /data-stage="2" aria-pressed="true"/);
 });
 test("music toggle is independent from always-on interaction effects", async () => {
-  const { isMusicEnabled, setMusicEnabled, activateMusicOnGesture } = await import("../src/ui/music.js");
+  const { isMusicEnabled, setMusicEnabled, activateMusicOnGesture, getMusicVolume, setMusicVolume } = await import("../src/ui/music.js");
   const before = isMusicEnabled();
+  const previousVolume = getMusicVolume();
   try {
     assert.equal(typeof setMusicEnabled(false), "boolean");
     assert.equal(isMusicEnabled(), false);
     assert.doesNotThrow(() => activateMusicOnGesture());
     assert.equal(isSoundEnabled(), true);
+    assert.equal(setMusicVolume(65), 65);
+    assert.equal(getMusicVolume(), 65);
+    assert.equal(setMusicVolume(-20), 0);
+    assert.equal(setMusicVolume(120), 100);
+    assert.equal(setMusicVolume(Number.NaN), 100);
   } finally {
+    setMusicVolume(previousVolume);
     setMusicEnabled(before);
   }
 });
 
 test("background track uses supplied local M4A rather than generating a substitute tune", () => {
   const source = readFileSync(new URL("../src/ui/music.js", import.meta.url), "utf8");
-  assert.match(source, /audio\/background\.m4a/);
+  assert.match(source, /audio\/videoplayback\.m4a/);
   assert.doesNotMatch(source, /createOscillator|const melody/);
+});
+
+test("possible-case styling is green, and the obsolete gray override is removed", () => {
+  const css = readFileSync(new URL("../src/style.css", import.meta.url), "utf8");
+  const legacy = readFileSync(new URL("../src/teacher.css", import.meta.url), "utf8");
+  assert.match(css, /\.candidate\.uncertain\s*\{[^}]*background:\s*#edf8f3/s);
+  assert.doesNotMatch(legacy, /\.candidate\.uncertain/);
+  assert.match(css, /\.candidate\.inconsistent\s*\{[^}]*background:\s*#eceff1/s);
+});
+test("background music slider is accessible and wired into volume updates", () => {
+  const source = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+  assert.match(source, /id="music-volume-slider"/);
+  assert.match(source, /aria-label="背景音樂音量"/);
+  assert.match(source, /setMusicVolume\(event\.target\.value\)/);
+  assert.match(source, /id="music-volume-value"/);
 });
