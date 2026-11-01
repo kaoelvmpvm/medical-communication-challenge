@@ -1,6 +1,10 @@
 import { cases, patientView } from "../data/cases.js";
 import { symptoms } from "../data/symptoms.js";
-import { questions, answerOptions } from "../data/questions.js";
+import {
+  questions,
+  answerOptions,
+  questionApplies,
+} from "../data/questions.js";
 
 export function createSession(stage = 1) {
   if (![1, 2, 3].includes(stage)) throw new Error("無效階段");
@@ -23,13 +27,25 @@ export function createSession(stage = 1) {
     finished: false,
   };
 }
+export function comparison(evidence, records) {
+  const entries = Object.entries(records).filter(
+    ([, value]) => typeof value === "boolean",
+  );
+  if (!entries.length) return "unrecorded";
+  let insufficient = false;
+  for (const [id, value] of entries) {
+    const fact = evidence[id];
+    if (typeof fact !== "boolean") {
+      insufficient = true;
+      continue;
+    }
+    if (fact !== value) return "conflict";
+  }
+  return insufficient ? "insufficient" : "consistent";
+}
 export function matches(records) {
   return cases
-    .filter((entry) =>
-      Object.entries(records).every(
-        ([id, value]) => entry.evidence[id] === value,
-      ),
-    )
+    .filter((entry) => comparison(entry.evidence, records) !== "conflict")
     .map((entry) => entry.id);
 }
 export function mark(session, id, value) {
@@ -108,8 +124,8 @@ export function selectAnswer(session, id) {
 }
 export function optionsFor(session) {
   const question = questions.find((item) => item.id === session.pending);
-  return question
-    ? answerOptions(patientView(cases[session.caseIndex]), question)
+  return question && questionApplies(question, cases[session.caseIndex].id)
+    ? answerOptions(cases[session.caseIndex], question)
     : [];
 }
 export function submitAnswer(session) {

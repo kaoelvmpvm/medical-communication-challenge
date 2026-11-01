@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { cases, bodyParts, patientView } from "../src/data/cases.js";
 import { symptoms } from "../src/data/symptoms.js";
-import { questions } from "../src/data/questions.js";
+import { questions, questionApplies } from "../src/data/questions.js";
 import {
   createSession,
   matches,
@@ -27,27 +27,34 @@ function doctor(stage = 1) {
   enterRole(s);
   return s;
 }
-test("six fictional cases have complete evidence for exactly eighteen symptoms", () => {
-  assert.equal(cases.length, 6);
-  assert.equal(symptoms.length, 18);
-  assert.equal(new Set(symptoms.map((item) => item.id)).size, 18);
+test("twelve fictional cases explicitly store all twenty-eight four-state facts", () => {
+  assert.equal(cases.length, 12);
+  assert.equal(symptoms.length, 28);
+  assert.equal(new Set(symptoms.map((item) => item.id)).size, 28);
   for (const entry of cases) {
     assert.deepEqual(
       Object.keys(entry.evidence).sort(),
       symptoms.map((item) => item.id).sort(),
     );
     assert.ok(
-      Object.values(entry.evidence).every(
-        (value) => typeof value === "boolean",
+      Object.values(entry.evidence).every((value) =>
+        [true, false, "unknown", "not_applicable"].includes(value),
       ),
     );
-    assert.deepEqual(matches(entry.evidence), [entry.id]);
+    assert.ok(matches(entry.evidence).includes(entry.id));
   }
 });
 test("every annotation has a valid anatomical anchor and patient projection omits answers", () => {
   for (const entry of cases) {
     const view = patientView(entry);
-    assert.deepEqual(Object.keys(view).sort(), ["context", "notes"]);
+    assert.deepEqual(Object.keys(view).sort(), [
+      "applicability",
+      "artId",
+      "context",
+      "diseaseCode",
+      "notes",
+      "profile",
+    ]);
     assert.ok(view.notes.length >= 3);
     for (const note of view.notes) {
       assert.ok(bodyParts[note.part]);
@@ -57,7 +64,7 @@ test("every annotation has a valid anatomical anchor and patient projection omit
     }
   }
 });
-test("all eighteen records start unknown and support repeated yes, no and clear without toggling errors", () => {
+test("all twenty-eight records start unconfirmed and support repeated yes, no and clear without toggling errors", () => {
   const s = doctor();
   assert.deepEqual(s.records, {});
   for (const symptom of symptoms) {
@@ -84,11 +91,16 @@ test("candidate matching recomputes on both positive and negative evidence inclu
       assert.deepEqual(
         matches({ [symptom.id]: value }),
         cases
-          .filter((entry) => entry.evidence[symptom.id] === value)
+          .filter(
+            (entry) =>
+              typeof entry.evidence[symptom.id] !== "boolean" ||
+              entry.evidence[symptom.id] === value,
+          )
           .map((entry) => entry.id),
       );
     }
-  assert.equal(matches({ fever: true, frequent: true }).length, 0);
+  assert.ok(!matches({ fever: true }).includes("cold"));
+  assert.ok(matches({ fever: true, frequent: true }).includes("otitis_media"));
 });
 test("handoff clears active role and prevents hidden role actions until confirmed", () => {
   const s = doctor();
@@ -154,6 +166,10 @@ test("all cases and questions produce four distinct non-diagnostic responses", (
       s.caseIndex = cases.indexOf(entry);
       ask(s, question.id);
       const options = optionsFor(s);
+      if (!questionApplies(question, entry.id)) {
+        assert.equal(options.length, 0);
+        continue;
+      }
       assert.equal(new Set(options.map((item) => item.text)).size, 4);
       for (const option of options) {
         assert.ok(option.analysis.length > 10);
@@ -177,7 +193,7 @@ test("next patient clears local records and question count while retaining cumul
   assert.equal(s.totalQuestions, 1);
   assert.deepEqual(s.records, {});
 });
-test("six-patient completion transitions through all three stages without leaking solved results", () => {
+test("legacy case-pool completion transitions through all three stages without leaking solved results", () => {
   const s = doctor();
   for (let stage = 1; stage <= 3; stage++) {
     assert.equal(s.stage, stage);

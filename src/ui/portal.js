@@ -4,7 +4,7 @@ import {
   stageLabels,
   escapeHtml as e,
 } from "./components.js";
-import { questions } from "../data/questions.js";
+import { questions, questionsForCase } from "../data/questions.js";
 export function portal() {
   return `<section class="role-intro"><span class="eyebrow">五人一組・每人一台平板</span><h1 id="screen-title" tabindex="-1">醫問到底！<br><span>一起問，一起解碼。</span></h1><p class="lead">四位醫師合作推理，一位病人描述感受。<br>教師掌握全班紀錄，每回合交換任務。</p></section><section class="role-grid" aria-label="選擇你的角色">${[
     ["doctor", "＋", "我是醫生", "記錄線索、討論推理，用好問題理解病情。"],
@@ -36,14 +36,21 @@ export function login() {
   return `<section class="handoff-panel teacher-login"><span class="handoff-symbol" aria-hidden="true">▣</span><h1 id="screen-title" tabindex="-1">教師專用入口</h1><p>輸入四位數字密碼，開啟這台裝置的班級紀錄。</p><form id="login-form"><label>教師密碼<input id="teacher-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required aria-describedby="login-error"></label><p id="login-error" class="form-error" role="alert"></p><div class="dialog-actions">${b("清除重輸", "clear-pin")}<button type="submit" class="button primary">解鎖紀錄中心</button></div></form><p class="small muted">固定密碼為簡易教室管理用途，不是伺服器身分驗證，無法防止技術性繞過。</p>${b("回到角色入口", "home", { kind: "quiet" })}</section>`;
 }
 export function studentStatus(s, count) {
-  return `<div class="session-status"><span class="role-tag ${s.role}">${s.role === "doctor" ? "＋ 醫師端" : "◎ 病人端"}</span><span>第 ${s.stage} 階段・${stageLabels[s.stage - 1]}</span><span>第 <strong>${s.round}</strong> / 5 回合</span>${s.role === "doctor" && s.stage !== 3 ? `${s.stage === 2 ? `<span>本機輔助提問 <strong data-question-count>${s.questionCount}</strong></span>` : ""}<span>符合 <strong data-match-count>${count}</strong> 個案例</span>` : ""}<div class="status-actions">${b("更換階段／回合", "change-round")}</div></div>`;
+  return `<div class="session-status"><span class="role-tag ${s.role}">${s.role === "doctor" ? "＋ 醫師端" : "◎ 病人端"}</span><span>第 ${s.stage} 階段・${stageLabels[s.stage - 1]}</span><span>第 <strong>${s.round}</strong> / 5 回合</span>${s.role === "doctor" && s.stage !== 3 ? `${s.stage === 2 ? `<span>本機輔助提問 <strong data-question-count>${s.questionCount}</strong></span>` : ""}<span>未衝突 <strong data-match-count>${count}</strong> 個案例</span>` : ""}<div class="status-actions">${b("更換階段／回合", "change-round")}</div></div>`;
 }
-export function patientQuestions(s) {
-  return `<section class="panel patient-question-picker"><h2>醫師現在問的是哪一題？</h2><p>依口頭問題選擇。沒有跨平板傳送，選好後再到下方選擇回答。</p><label>選擇聽到的問題<select id="patient-question"><option value="">尚未選擇</option>${questions.map((question) => `<option value="${question.id}" ${s.pending === question.id ? "selected" : ""}>${e(question.title)}</option>`).join("")}</select></label></section>`;
+export function patientQuestions(s, caseId) {
+  return `<section class="panel patient-question-picker"><h2>醫師現在問的是哪一題？</h2><p>依口頭問題選擇。沒有跨平板傳送，選好後再到下方選擇回答。</p><label>選擇聽到的問題<select id="patient-question"><option value="">尚未選擇</option>${questionsForCase(
+    caseId,
+  )
+    .map(
+      (question) =>
+        `<option value="${question.id}" ${s.pending === question.id ? "selected" : ""}>${e(question.title)}</option>`,
+    )
+    .join("")}</select></label></section>`;
 }
 
 export function patientLoading(stage) {
   return stage === 1
-    ? '<p class="notice">不需要病例碼。每個新回合從六種病例等機率抽取；已開始的同回合病例保留在此分頁，重新整理不會更換。</p>'
+    ? '<p class="notice">不需要病例碼。每個新回合從現有病例庫等機率抽取；已開始的同回合病例保留在此分頁，重新整理不會更換。</p>'
     : '<label>教師提供的病例碼<input aria-label="教師提供的病例碼" name="code" inputmode="numeric" autocomplete="off" maxlength="16" required placeholder="12 位數字" aria-describedby="code-help"><span id="code-help" class="field-help">只交給病人閱讀，不要向醫師展示病例碼或這個畫面。</span></label>';
 }

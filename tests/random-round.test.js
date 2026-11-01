@@ -20,12 +20,12 @@ function memory() {
     setItem: (key, value) => values.set(key, value),
   };
 }
-test("unbiased rejection sampling covers exactly six unchanged cases with equal accepted buckets", () => {
-  assert.equal(cases.length, 6);
-  const counts = Array(6).fill(0);
+test("unbiased rejection sampling covers all twelve cases with equal accepted buckets", () => {
+  assert.equal(cases.length, 12);
+  const counts = Array(cases.length).fill(0);
   for (let value = 0; value < 600; value++)
     counts[drawCaseIndex(() => value)]++;
-  assert.deepEqual(counts, [100, 100, 100, 100, 100, 100]);
+  assert.deepEqual(counts, Array(cases.length).fill(600 / cases.length));
   const sequence = [4294967295, 4294967294, 4294967293, 4294967292, 5];
   let calls = 0;
   assert.equal(
@@ -78,7 +78,7 @@ test("damaged state is never discarded or randomly replaced", () => {
   for (const raw of [
     "bad json",
     JSON.stringify({ version: 2, rounds: {}, activeRound: null }),
-    JSON.stringify({ version: 1, rounds: { 1: 6 }, activeRound: 1 }),
+    JSON.stringify({ version: 1, rounds: { 1: cases.length }, activeRound: 1 }),
     JSON.stringify({ version: 1, rounds: {}, activeRound: 1 }),
   ]) {
     const storage = memory();
@@ -106,15 +106,15 @@ test("failed persistence exposes no unsaved case and preserves an already loaded
   assert.equal(storage.getItem(PATIENT_ROUNDS_KEY), before);
   assert.deepEqual(rounds.resume(), { round: 1, caseIndex: 3 });
 });
-test("stage-one doctor renders eighteen continuous records, no categories, progress, guessing or counting", () => {
+test("stage-one doctor renders twenty-eight continuous records, no categories, progress, guessing or counting", () => {
   const s = createIndependentSession("doctor", 1, 1);
   const html = doctor(
     s,
     cases.map(({ id, disease }) => ({ id, disease })),
     cases.map((item) => item.id),
   );
-  assert.equal((html.match(/data-symptom-card=/g) || []).length, 18);
-  assert.equal((html.match(/data-candidate=/g) || []).length, 6);
+  assert.equal((html.match(/data-symptom-card=/g) || []).length, 28);
+  assert.equal((html.match(/data-candidate=/g) || []).length, 12);
   for (const forbidden of [
     "oral-panel",
     "decision-panel",

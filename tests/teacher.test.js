@@ -44,7 +44,7 @@ test("portable codes round-trip all six cases and fifteen stage-round pairs; inv
         );
       }
   assert.throws(() => readCode("123"));
-  assert.throws(() => makeCode(6, 1, 1));
+  assert.throws(() => makeCode(12, 1, 1));
 });
 test("coded stages two and three retain five distinct cases and five rotating patient seats", () => {
   const group = book().classes[0].groups[0];

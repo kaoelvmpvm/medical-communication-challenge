@@ -1,7 +1,24 @@
+import { additionalCases, additionalEvidence } from "./additional-cases.js";
+import { diseaseIdentifier } from "./disease-catalog.js";
 import { symptoms } from "./symptoms.js";
 
 export const bodyParts = Object.freeze({
   head: { name: "頭部", x: 50, y: 12 },
+  head_left: { name: "左側頭部", x: 60, y: 12 },
+  head_right: { name: "右側頭部", x: 40, y: 12 },
+  forehead: { name: "額頭", x: 50, y: 9 },
+  eye_right: { name: "右眼", x: 44, y: 14 },
+  eye_left: { name: "左眼", x: 56, y: 14 },
+  eyes: { name: "眼睛", x: 50, y: 14 },
+  ear_right: { name: "右耳", x: 36, y: 14 },
+  ear_left: { name: "左耳", x: 64, y: 14 },
+  arm_left: { name: "左手臂", x: 75, y: 42 },
+  arm_right: { name: "右手臂", x: 25, y: 42 },
+  skin: { name: "皮膚", x: 75, y: 42 },
+  waist: { name: "腰部", x: 35, y: 52 },
+  upper_abdomen: { name: "上腹", x: 50, y: 43 },
+  lower_abdomen: { name: "下腹", x: 50, y: 60 },
+  lower_back: { name: "下背（背側投影）", x: 36, y: 57 },
   nose: { name: "鼻眼", x: 50, y: 14.5 },
   throat: { name: "喉部", x: 50, y: 26 },
   chest: { name: "胸口", x: 50, y: 38 },
@@ -84,22 +101,66 @@ const definitions = [
   },
 ];
 
-export const cases = definitions.map(({ positive, notes, ...entry }) =>
-  Object.freeze({
-    ...entry,
-    evidence: Object.freeze(
-      Object.fromEntries(symptoms.map(({ id }) => [id, positive.includes(id)])),
-    ),
+const explicitNegatives = {
+  cold: ["fever", "aches"],
+  flu: ["oneSide"],
+  allergy: ["fever", "fatigue", "aches", "throat", "cough"],
+  gastro: ["fever", "aches", "frequent", "burning"],
+  migraine: ["fever", "fatigue", "aches", "vomit", "diarrhea"],
+  uti: ["fever", "fatigue", "aches"],
+};
+function buildCase(entry, evidence) {
+  const identifier = diseaseIdentifier(entry.id);
+  return Object.freeze({
+    id: entry.id,
+    disease: identifier.disease,
+    caseNumber: identifier.caseNumber,
+    diseaseCode: identifier.diseaseCode,
+    evidence: Object.freeze(evidence),
     notes: Object.freeze(
-      notes.map(([part, text], index) =>
+      entry.notes.map(([part, text], index) =>
         Object.freeze({ id: `${entry.id}-${index}`, part, text }),
       ),
     ),
-    context: "請用自己的話回答；沒有提到的感受，在這個模擬情境中代表目前沒有。",
-  }),
-);
+    profile: Object.freeze(entry.profile || {}),
+    responses: Object.freeze(entry.responses || {}),
+    guidance: entry.guidance || "",
+    applicability: Object.freeze({ period: entry.id === "dysmenorrhea" }),
+    context:
+      "這是固定的模擬情境。未提及或不適用的資訊，不等於確定沒有症狀，也不代表真實醫療判斷。",
+  });
+}
+export const cases = [
+  ...definitions.map((entry) =>
+    buildCase(
+      entry,
+      Object.fromEntries(
+        symptoms.map(({ id }) => [
+          id,
+          entry.positive.includes(id)
+            ? true
+            : explicitNegatives[entry.id].includes(id)
+              ? false
+              : id === "periodCramps"
+                ? "not_applicable"
+                : "unknown",
+        ]),
+      ),
+    ),
+  ),
+  ...additionalCases.map((entry, index) =>
+    buildCase(entry, additionalEvidence(index, symptoms)),
+  ),
+];
 
 // Only this safe projection is passed to the patient renderer.
 export function patientView(entry) {
-  return { notes: entry.notes, context: entry.context };
+  return {
+    notes: entry.notes,
+    context: entry.context,
+    diseaseCode: entry.diseaseCode,
+    artId: entry.id,
+    profile: entry.profile,
+    applicability: entry.applicability,
+  };
 }

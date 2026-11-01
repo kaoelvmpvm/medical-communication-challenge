@@ -8,7 +8,7 @@ export function observeBodyMap(main) {
     svg.setAttribute("viewBox", `0 0 ${bounds.width} ${bounds.height}`);
     const lines = [...map.querySelectorAll(".body-note")].map((note) => {
       const marker = map
-        .querySelector(`[data-note="${note.id}"]`)
+        .querySelector(`[data-notes~="${note.id}"]`)
         .getBoundingClientRect();
       const card = note.getBoundingClientRect();
       const left = note.classList.contains("left");

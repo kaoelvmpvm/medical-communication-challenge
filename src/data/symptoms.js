@@ -5,6 +5,10 @@ export const systems = [
   { id: "airway", name: "呼吸道", icon: "≋" },
   { id: "gut", name: "腸胃", icon: "◈" },
   { id: "urinary", name: "排尿", icon: "◇" },
+  { id: "eyes", name: "眼睛", icon: "◉" },
+  { id: "skin", name: "皮膚", icon: "◇" },
+  { id: "ears", name: "耳朵", icon: "◎" },
+  { id: "period", name: "經期相關", icon: "◇" },
 ];
 export const symptoms = [
   ["fever", "發燒", "general"],
@@ -25,4 +29,14 @@ export const symptoms = [
   ["frequent", "頻尿", "urinary"],
   ["burning", "排尿灼熱", "urinary"],
   ["lower", "下腹不適", "urinary"],
+  ["redEye", "眼睛紅", "eyes"],
+  ["eyeDischarge", "眼部分泌物增加", "eyes"],
+  ["wheals", "皮膚出現凸起紅疹", "skin"],
+  ["skinItch", "皮膚搔癢", "skin"],
+  ["heartburn", "胸口灼熱", "airway"],
+  ["sourTaste", "嘴裡有酸味或酸水逆流", "gut"],
+  ["earPain", "耳朵疼痛", "ears"],
+  ["muffledHearing", "聽聲音變得悶悶的", "ears"],
+  ["bilateralPressure", "雙側壓迫性頭痛", "head"],
+  ["periodCramps", "經期相關腹部絞痛", "period"],
 ].map(([id, name, system]) => Object.freeze({ id, name, system }));

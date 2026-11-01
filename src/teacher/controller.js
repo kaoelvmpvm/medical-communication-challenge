@@ -7,7 +7,8 @@ import {
   exportCsv,
   rankings,
 } from "./model.js";
-import { teacherView, groupForm, rankingList } from "./view.js";
+import { lookupDiseaseCode } from "../data/disease-catalog.js";
+import { teacherView, groupForm, rankingList, codeLookupForm } from "./view.js";
 import { button as b, escapeHtml as e } from "../ui/components.js";
 function download(text, name, type) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -148,6 +149,7 @@ export class TeacherApp {
       return;
     }
     if (action === "t-cancel") return this.close();
+    if (action === "t-code-lookup") return this.open(codeLookupForm());
     if (action === "t-confirm") {
       const confirm = this.confirm;
       this.close();
@@ -301,9 +303,18 @@ export class TeacherApp {
   }
   submit(event) {
     const form = event.target;
-    if (!["class-form", "group-form"].includes(form.id)) return;
+    if (!["class-form", "group-form", "code-lookup-form"].includes(form.id))
+      return;
     event.preventDefault();
     const data = new FormData(form);
+    if (form.id === "code-lookup-form") {
+      const match = lookupDiseaseCode(data.get("diseaseCode"));
+      this.dialog.querySelector("#code-lookup-result").innerHTML = match
+        ? `<p><strong>${e(match.disease)}</strong></p><p>病例編號：${e(match.caseNumber)}</p>`
+        : "<p>查無對應疾病</p>";
+      return;
+    }
+
     if (form.id === "class-form") {
       let newId;
       try {

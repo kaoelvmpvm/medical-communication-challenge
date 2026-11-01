@@ -1,10 +1,12 @@
 import "./style.css";
 import "./teacher.css";
 import { cases, patientView } from "./data/cases.js";
-import { questions } from "./data/questions.js";
+import { symptoms } from "./data/symptoms.js";
+import { questions, questionsForCase } from "./data/questions.js";
 import {
   createIndependentSession,
   matches,
+  comparison,
   mark,
   ask,
   optionsFor,
@@ -25,10 +27,12 @@ import {
   patientLoading,
 } from "./ui/portal.js";
 import { button as b, escapeHtml as e, notice } from "./ui/components.js";
+import { caseArtUrl } from "./data/art-assets.js";
+import { artPlaceholder } from "./ui/case-art.js";
 import { observeBodyMap } from "./ui/body-lines.js";
 import { TeacherApp } from "./teacher/controller.js";
 const app = document.querySelector("#app");
-app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><span aria-hidden="true">＋</span>醫問到底<span class="brand-punctuation">！</span></a><span class="header-subtitle">病情解碼挑戰</span><span class="version-label">教學模擬 · 1.3</span><button class="button quiet" type="button" data-action="home">角色入口</button></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>醫問到底！——病情解碼挑戰</span><span>教學模擬・不是醫療診斷工具</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
+app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><span aria-hidden="true">＋</span>醫問到底<span class="brand-punctuation">！</span></a><span class="header-subtitle">病情解碼挑戰</span><span class="version-label">教學模擬 · 1.4</span><button class="button quiet" type="button" data-action="home">角色入口</button></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>醫問到底！——病情解碼挑戰</span><span>教學模擬・不是醫療診斷工具</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
 const main = document.querySelector("#main"),
   statusHost = document.querySelector("#status-host"),
   toolsHost = document.querySelector("#tools-host"),
@@ -131,7 +135,11 @@ function render({ focus = true } = {}) {
         independentNotice +
         doctor(
           session,
-          cases.map(({ id, disease }) => ({ id, disease })),
+          cases.map((entry) => ({
+            id: entry.id,
+            disease: entry.disease,
+            comparison: comparison(entry.evidence, session.records),
+          })),
           matching,
         );
       if (session.stage === 2)
@@ -141,10 +149,15 @@ function render({ focus = true } = {}) {
     } else {
       main.innerHTML =
         independentNotice +
-        (session.stage === 2 ? patientQuestions(session) : "") +
+        (session.stage === 2
+          ? patientQuestions(session, cases[session.caseIndex].id)
+          : "") +
         patient(
           session,
-          patientView(cases[session.caseIndex]),
+          {
+            ...patientView(cases[session.caseIndex]),
+            artUrl: caseArtUrl(cases[session.caseIndex].id),
+          },
           session.stage === 2 ? optionsFor(session) : [],
         );
       observer = observeBodyMap(main);
@@ -168,6 +181,8 @@ function loadStudent(data) {
       const decoded = readCode(data.get("code"));
       if (decoded.stage !== stage || decoded.round !== round)
         throw new Error("病例碼與所選階段／回合不一致，請向教師確認。");
+      if (!cases[decoded.caseIndex])
+        throw new Error("這份載入碼對應的完整病例內容尚未提供，尚未載入。");
       next = createIndependentSession(role, stage, round, decoded.caseIndex);
     } else if (role === "doctor")
       next = createIndependentSession(role, stage, round);
@@ -219,15 +234,19 @@ function updateRecords(id) {
     .setAttribute("aria-pressed", String(value === false));
   const matching = matches(session.records);
   main.querySelector("[data-candidates]").innerHTML = candidateCards(
-    cases.map(({ id, disease }) => ({ id, disease })),
+    cases.map((entry) => ({
+      id: entry.id,
+      disease: entry.disease,
+      comparison: comparison(entry.evidence, session.records),
+    })),
     matching,
   );
   main.querySelector("[data-match-summary]").textContent =
-    `${matching.length} / 6 個案例符合`;
+    `${matching.length} / ${cases.length} 個未衝突`;
   statusHost.querySelector("[data-match-count]").textContent = matching.length;
   const progress = main.querySelector("[data-record-progress]");
   if (progress)
-    progress.textContent = `${Object.keys(session.records).length} / 18 已確認`;
+    progress.textContent = `${Object.keys(session.records).length} / ${symptoms.length} 已確認`;
   announce(`紀錄已更新，${matching.length} 個模擬案例符合目前線索。`);
 }
 
@@ -332,9 +351,10 @@ app.addEventListener("click", (event) => {
   }
   if (action === "focus-note") {
     const note = document.getElementById(target.dataset.note);
+    const ids = (target.dataset.notes || target.dataset.note).split(" ");
     main
       .querySelectorAll(".body-note")
-      .forEach((el) => el.classList.toggle("highlighted", el === note));
+      .forEach((el) => el.classList.toggle("highlighted", ids.includes(el.id)));
     note.focus({ preventScroll: true });
     note.scrollIntoView({
       block: "center",
@@ -410,7 +430,13 @@ app.addEventListener("change", (event) => {
   }
   if (event.target.id === "patient-question" && session?.role === "patient") {
     const questionId = event.target.value;
-    if (questionId && !questions.some((q) => q.id === questionId)) return;
+    if (
+      questionId &&
+      !questionsForCase(cases[session.caseIndex].id).some(
+        (q) => q.id === questionId,
+      )
+    )
+      return;
     const apply = () => {
       session.pending = questionId || null;
       session.selectedAnswer = null;
@@ -499,3 +525,12 @@ try {
   /* Keep the neutral portal; start() reports damaged/unavailable storage without redrawing. */
 }
 render({ focus: false });
+
+app.addEventListener(
+  "error",
+  (event) => {
+    if (event.target.matches?.(".case-art img"))
+      event.target.closest(".case-art-frame").innerHTML = artPlaceholder;
+  },
+  true,
+);

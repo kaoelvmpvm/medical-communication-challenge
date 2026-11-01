@@ -1,6 +1,45 @@
 import { bodyParts } from "../data/cases.js";
 import { escapeHtml as e } from "./components.js";
 
+// Cluster nearby anatomical pins, not their text. This keeps 44px targets apart on phones.
+export function markerGroups(notes) {
+  const groups = notes.map((note, index) => ({
+    notes: [{ ...note, index }],
+    x: bodyParts[note.part].x,
+    y: bodyParts[note.part].y,
+  }));
+  let merged = true;
+  while (merged) {
+    merged = false;
+    outer: for (let i = 0; i < groups.length; i++)
+      for (let j = i + 1; j < groups.length; j++) {
+        if (
+          Math.hypot(
+            (groups[i].x - groups[j].x) * 2,
+            (groups[i].y - groups[j].y) * 4,
+          ) < 46
+        ) {
+          const joined = [...groups[i].notes, ...groups[j].notes].sort(
+            (a, b) => a.index - b.index,
+          );
+          groups[i] = {
+            notes: joined,
+            x:
+              joined.reduce((n, item) => n + bodyParts[item.part].x, 0) /
+              joined.length,
+            y:
+              joined.reduce((n, item) => n + bodyParts[item.part].y, 0) /
+              joined.length,
+          };
+          groups.splice(j, 1);
+          merged = true;
+          break outer;
+        }
+      }
+  }
+  return groups;
+}
+
 export function bodyMap(view) {
   const notes = view.notes;
   // Pair from head to toe; place a side-of-body anchor on its nearest side.
@@ -23,7 +62,7 @@ export function bodyMap(view) {
     );
   }
   return `<div class="body-map" >
-    <div class="body-figure"><svg viewBox="0 0 240 480" role="img" aria-label="正面人體示意圖，依編號查看身體感受" class="body-svg">
+    <div class="body-figure"><svg viewBox="0 0 240 480" role="img" aria-label="正面人體示意圖，以病人左右為準，依編號查看身體感受" class="body-svg">
       <defs><linearGradient id="body-fill" x1="0" x2="1"><stop stop-color="#d8e9e6"/><stop offset="1" stop-color="#eaf3f1"/></linearGradient></defs>
       <ellipse cx="120" cy="458" rx="69" ry="9" fill="#dce8e8"/>
       <circle cx="120" cy="58" r="32" fill="url(#body-fill)" stroke="#789e9b" stroke-width="2"/>
@@ -31,14 +70,10 @@ export function bodyMap(view) {
       <path d="M104 145q16 8 32 0M120 164v72M101 252h38" fill="none" stroke="#bdd4d1" stroke-width="2" stroke-linecap="round"/>
     </svg><span class="figure-caption">正面示意 · 非解剖圖</span></div>
     <svg class="body-connectors" preserveAspectRatio="none" aria-hidden="true"></svg>
-    <div class="body-markers">${notes
-      .map((note, index) => {
-        const part = bodyParts[note.part];
-        // Separate nearby anchors with small horizontal offsets while retaining the body region.
-        const offset =
-          notes.slice(0, index).filter((item) => item.part === note.part)
-            .length * 5;
-        return `<button class="body-marker" type="button" data-action="focus-note" data-note="${note.id}" style="--x:${part.x + offset}%;--y:${part.y}%" aria-label="感受 ${index + 1}：${part.name}">${index + 1}</button>`;
+    <div class="body-markers">${markerGroups(notes)
+      .map((group) => {
+        const first = group.notes[0];
+        return `<button class="body-marker" type="button" data-action="focus-note" data-note="${first.id}" data-notes="${group.notes.map((item) => item.id).join(" ")}" style="--x:${group.x}%;--y:${group.y}%" aria-label="查看感受 ${group.notes.map((item) => item.index + 1).join("、")}：${[...new Set(group.notes.map((item) => bodyParts[item.part].name))].join("、")}">${first.index + 1}${group.notes.length > 1 ? "+" : ""}</button>`;
       })
       .join("")}</div>
     <div class="body-notes">${notes.map((note, index) => `<article tabindex="-1" id="${note.id}" class="body-note ${positions.get(note.id).side}" style="--row:${positions.get(note.id).row}"><div class="note-meta"><span class="note-number">${index + 1}</span><span>${bodyParts[note.part].name}的感受</span></div><p>${e(note.text)}</p></article>`).join("")}</div>

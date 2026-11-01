@@ -1,77 +1,187 @@
-// General questions are offered in stage 2 only. Never recommended or ranked.
+// Shared oral questions. Period questions are conditional in the patient picker, never a forced answer.
 export const questions = [
   {
     id: "body",
     title: "這幾天的體溫和精神怎麼樣？身體有痠痛嗎？",
     parts: ["body"],
+    symptoms: ["fever", "fatigue", "aches"],
     group: "全身感受",
   },
   {
     id: "head",
     title: "頭部有不舒服嗎？在哪裡？光線會影響嗎？",
-    parts: ["head"],
+    parts: ["head", "head_left", "head_right", "forehead"],
+    symptoms: ["headache", "oneSide", "light", "bilateralPressure"],
     group: "頭部感受",
   },
   {
     id: "nose",
     title: "鼻子或眼睛有什麼和平常不一樣的感覺？",
-    parts: ["nose"],
+    parts: ["nose", "eyes", "eye_left", "eye_right"],
+    symptoms: ["runny", "sneeze", "itch", "redEye"],
     group: "鼻眼感受",
   },
   {
     id: "throat",
     title: "吞東西或呼吸時，有哪些不舒服的地方？",
     parts: ["throat", "chest"],
+    symptoms: ["throat", "cough"],
     group: "喉部與呼吸",
   },
   {
     id: "stomach",
     title: "肚子或胃有什麼不舒服？吃東西和大便的情況呢？",
-    parts: ["stomach"],
+    parts: ["stomach", "upper_abdomen", "lower_abdomen"],
+    symptoms: ["nausea", "vomit", "diarrhea", "belly", "lower"],
     group: "腸胃感受",
   },
   {
     id: "bladder",
     title: "上廁所小便的次數和感覺，跟平常有什麼不同？",
     parts: ["bladder"],
+    symptoms: ["frequent", "burning"],
     group: "排尿感受",
   },
+  {
+    id: "eyes",
+    title: "眼睛有哪些不舒服？有沒有分泌物，或看不清楚？",
+    parts: ["eyes", "eye_left", "eye_right"],
+    symptoms: ["redEye", "eyeDischarge", "light", "itch"],
+    group: "眼睛感受",
+  },
+  {
+    id: "skin",
+    title: "皮膚有什麼變化？會癢嗎？疹子會怎麼改變？",
+    parts: ["skin", "arm_left", "arm_right", "waist"],
+    symptoms: ["wheals", "skinItch"],
+    group: "皮膚感受",
+  },
+  {
+    id: "ears",
+    title: "耳朵有什麼感覺？聽聲音跟平常有什麼不同？",
+    parts: ["ear_left", "ear_right"],
+    symptoms: ["earPain", "muffledHearing"],
+    group: "耳朵感受",
+  },
+  {
+    id: "chest",
+    title: "胸口不舒服是什麼感覺？和吃飯、躺下或嘴裡的味道有關嗎？",
+    parts: ["chest", "throat", "upper_abdomen"],
+    symptoms: ["heartburn", "sourTaste"],
+    group: "胸口感受",
+  },
+  {
+    id: "period",
+    title: "若情境適用：不舒服的時間和月經有關係嗎？月經來的時候，哪裡不舒服？",
+    parts: ["lower_abdomen", "lower_back"],
+    symptoms: ["periodCramps"],
+    applicableCaseIds: ["dysmenorrhea"],
+    group: "經期相關（條件式）",
+  },
 ];
-
-export function answerOptions(view, question) {
-  const related = view.notes.filter((note) =>
+export const questionApplies = (question, id) =>
+  !question.applicableCaseIds || question.applicableCaseIds.includes(id);
+export const questionsForCase = (id) =>
+  questions.filter((question) => questionApplies(question, id));
+const fallbackPhrases = {
+  fever: ["量體溫有升高的情況。", "量過體溫，沒有升高的情況。"],
+  fatigue: ["感覺比較沒精神或沒力氣。", "精神跟平常差不多。"],
+  aches: ["全身有痠痛的感覺。", "沒有全身痠痛。"],
+  headache: ["頭部有疼痛。", "沒有明顯頭痛。"],
+  oneSide: ["只有一側頭部在痛。", "不是只有一側頭部痛。"],
+  light: ["光線明亮時更不舒服。", "沒有怕光。"],
+  throat: ["吞口水會痛。", "喉嚨沒有痛。"],
+  runny: ["有流鼻水。", "沒有流鼻水。"],
+  sneeze: ["有一直打噴嚏。", "沒有一直打噴嚏。"],
+  cough: ["有咳嗽。", "沒有明顯咳嗽。"],
+  itch: ["鼻子或眼睛會癢。", "鼻子和眼睛沒有明顯癢。"],
+  nausea: ["有想吐的感覺。", "沒有想吐。"],
+  vomit: ["有真的吐出來。", "沒有真的吐出來。"],
+  diarrhea: ["有拉肚子。", "沒有拉肚子。"],
+  belly: ["有肚子痛。", "沒有腹部絞痛。"],
+  lower: ["肚子下面不舒服。", "沒有下腹不適。"],
+  frequent: ["剛上完廁所又很想去。", "沒有比平常更常想小便。"],
+  burning: ["小便時熱熱刺刺的。", "小便時不會刺痛。"],
+  redEye: ["眼睛紅紅的。", "眼睛沒有紅。"],
+  eyeDischarge: ["眼角的分泌物變多了。", "眼部分泌物沒有增加。"],
+  wheals: ["皮膚有一塊塊凸起的紅疹。", "沒有凸起的紅疹。"],
+  skinItch: ["皮膚會癢。", "皮膚不癢。"],
+  heartburn: ["胸口熱熱燒燒的。", "沒有胸口灼熱的感覺。"],
+  sourTaste: [
+    "嘴巴裡會酸酸的，好像有酸的東西往上跑。",
+    "沒有酸味或酸水往上跑。",
+  ],
+  earPain: ["耳朵裡面會痛。", "耳朵不會痛。"],
+  muffledHearing: ["聽聲音悶悶的。", "聽聲音和平常一樣。"],
+  bilateralPressure: [
+    "兩邊頭部像被帶子箍住，緊緊悶悶的。",
+    "沒有雙側壓迫的頭痛。",
+  ],
+  periodCramps: ["月經開始後下腹一陣一陣絞痛。", "沒有經期相關的腹部絞痛。"],
+};
+export function answerOptions(entry, question) {
+  if (!questionApplies(question, entry.id)) return [];
+  const related = entry.notes.filter((note) =>
     question.parts.includes(note.part),
   );
-  const detail = related.length
-    ? related.map((note) => note.text).join(" ")
-    : "你問的這個部位，目前沒有特別不舒服的感覺。";
-  return [
+  const known = question.symptoms.filter(
+    (id) => typeof entry.evidence[id] === "boolean",
+  );
+  const insufficient = question.symptoms.some(
+    (id) => entry.evidence[id] === "unknown",
+  );
+  const hasSource =
+    related.length > 0 || known.length > 0 || !!entry.responses?.[question.id];
+  let detail =
+    entry.responses?.[question.id] ||
+    (related.length
+      ? related.map((note) => note.text).join(" ")
+      : known
+          .map((id) => fallbackPhrases[id][entry.evidence[id] ? 0 : 1])
+          .join(""));
+  if (!hasSource)
+    detail =
+      "這部分我還沒有注意到，情境也沒有提供，我還不確定，不能直接當作沒有。";
+  else if (insufficient && !detail.includes("不確定"))
+    detail += " 問題中沒有設定的其他細節，我還不確定。";
+  const detailed = {
+    id: "detail",
+    text: detail,
+    quality: hasSource ? "具體且切合問題" : "清楚說明資料不足",
+    analysis: hasSource
+      ? "這個回答使用情境已有的具體資訊；沒有設定的部分如實說明不確定，不猜原因，也不把未知當成沒有。"
+      : "明確說出不確定，比編造「有」或「沒有」更可靠。教師可判定這題無效，請醫師換個問題。",
+  };
+  const options = [
     {
       id: "vague",
-      text: "就是不太舒服，我也不知道怎麼說。",
+      text: "就是有些感覺，我也說不清楚。",
       quality: "可以再具體一點",
       analysis:
-        "只說不舒服，對方還不知道位置、時間或感覺。試著補上一個具體細節。",
+        "有設定的資訊可以補上位置、感覺或時間；沒有資料時要明確說不確定。",
     },
-    {
-      id: "detail",
-      text: detail,
-      quality: "具體且切合問題",
-      analysis:
-        "這個回答描述了被問到的身體感受。說出位置、感覺、次數或實際測量，能讓對方更容易理解。",
-    },
+    detailed,
     {
       id: "guess",
-      text: "我想大概是生病了，你直接告訴我怎麼辦吧。",
-      quality: "先描述，再一起討論",
-      analysis: "先說出實際感受，能幫助醫師釐清資訊；不用急著猜原因。",
+      text: "我覺得原因應該不用再確認了，也不需要補充哪裡不舒服、什麼時候開始或怎麼變化。只要猜一個原因就好，沒有注意到的部分也可以直接當作都沒有。",
+      quality: "先描述已知資訊，不猜原因",
+      analysis:
+        "這個說法省略了重要資訊，也把未知當成沒有。應依情境提供事實，資料不足時如實說明。",
     },
     {
       id: "brief",
-      text: related.length ? "這個地方跟平常感覺不太一樣。" : "還好。",
-      quality: "方向正確，可以補充",
-      analysis:
-        "回答有回應問題，但還能說明哪裡、怎麼不舒服，或清楚說目前沒有異常感受。",
+      text: related.length
+        ? "這個部位跟平常感覺不太一樣。"
+        : "我還想再確認這件事。",
+      quality: "可以說明得更清楚",
+      analysis: "補上已知的具體細節，或清楚說情境沒有提供；不用編造答案。",
     },
   ];
+  // Stable variation prevents a fixed answer position, while confirmation still controls analysis.
+  const offset =
+    [...(entry.id + question.id)].reduce(
+      (sum, char) => sum + char.charCodeAt(0),
+      0,
+    ) % options.length;
+  return [...options.slice(offset), ...options.slice(0, offset)];
 }

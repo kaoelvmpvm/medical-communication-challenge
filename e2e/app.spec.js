@@ -300,10 +300,10 @@ test("official counters, bounds, tied ranks, independent stages, persistence, CS
   await snap(page, info, "teacher-case-plans");
 });
 
-test("six unchanged patient maps and doctor eighteen-state filtering with manual guesses", async ({
+test("twelve source patient maps and doctor twenty-eight-state filtering with manual guesses", async ({
   page,
 }, info) => {
-  for (let index = 0; index < 6; index++) {
+  for (let index = 0; index < cases.length; index++) {
     await startStudent(page, "patient", 2, 1, index);
     await expect(page.locator(".body-note")).toHaveCount(
       cases[index].notes.length,
@@ -324,7 +324,7 @@ test("six unchanged patient maps and doctor eighteen-state filtering with manual
   }
   await startStudent(page, "doctor");
   await expect(page.locator(".question-panel")).toHaveCount(0);
-  await expect(page.locator(".symptom-card")).toHaveCount(18);
+  await expect(page.locator(".symptom-card")).toHaveCount(symptoms.length);
   if (
     !((await page.locator(".candidate-details").getAttribute("open")) !== null)
   )
@@ -337,7 +337,11 @@ test("six unchanged patient maps and doctor eighteen-state filtering with manual
       else await button.click({ clickCount: 2 });
       await expect(card).toHaveAttribute("data-state", value ? "yes" : "no");
       await expect(page.locator(".candidate.consistent")).toHaveCount(
-        cases.filter((entry) => entry.evidence[symptom.id] === value).length,
+        cases.filter(
+          (entry) =>
+            typeof entry.evidence[symptom.id] !== "boolean" ||
+            entry.evidence[symptom.id] === value,
+        ).length,
       );
     }
     await card.locator('[data-value="null"]').click();
@@ -348,11 +352,13 @@ test("six unchanged patient maps and doctor eighteen-state filtering with manual
       ".oral-panel,.decision-panel,.system-nav,.symptom-group,[data-record-progress],[data-question-count],.mobile-tools",
     ),
   ).toHaveCount(0);
-  await expect(page.locator(".phase-one-grid > .symptom-card")).toHaveCount(18);
+  await expect(page.locator(".phase-one-grid > .symptom-card")).toHaveCount(
+    symptoms.length,
+  );
   await page.getByRole("button", { name: "清空症狀紀錄" }).click();
   await page.getByRole("button", { name: "確認", exact: true }).click();
   await expect(page.locator('.symptom-card[data-state="unknown"]')).toHaveCount(
-    18,
+    symptoms.length,
   );
   await layout(page);
   if (
@@ -360,7 +366,7 @@ test("six unchanged patient maps and doctor eighteen-state filtering with manual
   ) {
     await expect(page.locator(".candidate").first()).toBeHidden();
     await page.locator(".candidate-details summary").click();
-    await expect(page.locator(".candidate")).toHaveCount(6);
+    await expect(page.locator(".candidate")).toHaveCount(cases.length);
     await layout(page);
   }
   await axe(page);
@@ -513,6 +519,7 @@ test("stage-one random cases survive refresh, redraws and revisits; only confirm
     cases[4].notes[0].text,
   );
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
+  await expect(page.locator(".disease-code strong")).toHaveText("9274");
   for (const entry of cases)
     await expect(page.locator("body")).not.toContainText(entry.disease);
   await page.reload();
@@ -520,6 +527,7 @@ test("stage-one random cases survive refresh, redraws and revisits; only confirm
     cases[4].notes[0].text,
   );
   expect(await page.evaluate(() => window.__caseDraws)).toBe(0);
+  await expect(page.locator(".disease-code strong")).toHaveText("9274");
   await page.locator(".body-marker").first().click();
   expect(await page.evaluate(() => window.__caseDraws)).toBe(0);
   await layout(page);
@@ -576,4 +584,135 @@ test("stage-one random cases survive refresh, redraws and revisits; only confirm
   await expect(page.locator(".body-note")).toHaveCount(0);
   await page.reload();
   await expect(page.locator(".body-note")).toHaveCount(0);
+});
+
+test("teacher can query all twelve internal codes; patient sees only stable identifier and art placeholder", async ({
+  page,
+}, info) => {
+  const { diseaseCatalog } = await import("../src/data/disease-catalog.js");
+  await login(page);
+  await page.getByRole("button", { name: "疾病代碼查詢", exact: true }).click();
+  for (const entry of diseaseCatalog) {
+    await page
+      .getByLabel("四位數疾病代碼", { exact: true })
+      .fill(entry.diseaseCode);
+    await page.getByRole("button", { name: "查詢", exact: true }).click();
+    await expect(page.locator("#code-lookup-result")).toContainText(
+      entry.disease,
+    );
+    await expect(page.locator("#code-lookup-result")).toContainText(
+      entry.caseNumber,
+    );
+  }
+  await page.getByLabel("四位數疾病代碼", { exact: true }).fill("0000");
+  await page.getByRole("button", { name: "查詢", exact: true }).click();
+  await expect(page.locator("#code-lookup-result")).toHaveText("查無對應疾病");
+  await axe(page);
+  await snap(page, info, "teacher-code-lookup");
+  await page.getByRole("button", { name: "關閉", exact: true }).click();
+  await page.getByRole("button", { name: "登出", exact: true }).click();
+  const failures = [];
+  page.on("response", (response) => {
+    if (response.status() >= 400) failures.push(response.url());
+  });
+  await startStudent(page, "patient", 2, 1, 0);
+  await expect(page.locator(".disease-code strong")).toHaveText("4726");
+  await expect(page.locator(".case-art")).toContainText("劇情圖片");
+  await expect(page.locator(".case-art img")).toHaveCount(0);
+  for (const entry of diseaseCatalog)
+    await expect(page.locator("body")).not.toContainText(entry.disease);
+  await expect(
+    page.getByRole("button", { name: "疾病代碼查詢", exact: true }),
+  ).toHaveCount(0);
+  await layout(page);
+  await axe(page);
+  await snap(page, info, "patient-code-art-placeholder");
+  expect(failures).toEqual([]);
+});
+
+test("new cases answer source-based questions, preserve unknown facts and conditionally offer period questions", async ({
+  page,
+}, info) => {
+  const topics = ["eyes", "skin", "chest", "head", "period", "ears"];
+  for (let index = 6; index < cases.length; index++) {
+    await startStudent(page, "patient", 2, 1, index);
+    const entry = cases[index],
+      topic = topics[index - 6];
+    await expect(page.locator(".disease-code strong")).toHaveText(
+      entry.diseaseCode,
+    );
+    const periodOptions = page.locator(
+      '#patient-question option[value="period"]',
+    );
+    await expect(periodOptions).toHaveCount(
+      entry.id === "dysmenorrhea" ? 1 : 0,
+    );
+    await page.locator("#patient-question").selectOption(topic);
+    await expect(page.locator(".answer-option")).toHaveCount(4);
+    const chosen = page.locator('[data-action="answer"][data-id="detail"]');
+    await expect(chosen).toContainText(entry.responses[topic]);
+    await chosen.click();
+    await expect(page.locator(".answer-analysis")).toHaveCount(0);
+    await page.getByRole("button", { name: "確認回答", exact: true }).click();
+    await expect(page.locator(".answer-analysis")).toContainText(
+      "具體且切合問題",
+    );
+    await layout(page);
+    if (index === 6 || index === 10) {
+      await axe(page);
+      await snap(page, info, `case-${entry.caseNumber}-answer`);
+    }
+    for (const disease of cases)
+      await expect(page.locator("body")).not.toContainText(disease.disease);
+  }
+  for (const [index, topic] of [
+    [7, "throat"],
+    [8, "stomach"],
+    [10, "stomach"],
+    [11, "head"],
+    [11, "body"],
+  ]) {
+    await startStudent(page, "patient", 2, 1, index);
+    await page.locator("#patient-question").selectOption(topic);
+    await expect(
+      page.locator('[data-action="answer"][data-id="detail"]'),
+    ).toContainText(cases[index].responses[topic]);
+  }
+  await startStudent(page, "patient", 2, 1, 6);
+  await page.locator("#patient-question").selectOption("ears");
+  await expect(page.locator('[data-id="detail"]')).toContainText("不確定");
+  await page.locator('[data-id="detail"]').click();
+  await page.getByRole("button", { name: "確認回答", exact: true }).click();
+  await expect(page.locator(".answer-analysis")).toContainText(
+    "清楚說明資料不足",
+  );
+  await startStudent(page, "doctor", 1, 1);
+  if ((await page.locator(".candidate-details").getAttribute("open")) === null)
+    await page.locator(".candidate-details summary").click();
+  await page.locator('[data-id="redEye"][data-value="true"]').click();
+  await expect(
+    page.locator('[data-candidate="viral_conjunctivitis"]'),
+  ).toHaveAttribute("data-comparison", "consistent");
+  await expect(page.locator('[data-candidate="urticaria"]')).toHaveAttribute(
+    "data-comparison",
+    "conflict",
+  );
+  await expect(page.locator('[data-candidate="cold"]')).toHaveAttribute(
+    "data-comparison",
+    "insufficient",
+  );
+  await expect(page.locator('[data-candidate="cold"]')).toContainText(
+    "資訊不足以比較",
+  );
+  await page.locator('[data-id="periodCramps"][data-value="true"]').click();
+  await expect(
+    page.locator('[data-candidate="viral_conjunctivitis"]'),
+  ).toHaveAttribute("data-comparison", "insufficient");
+  await expect(page.locator('[data-candidate="urticaria"]')).toHaveAttribute(
+    "data-comparison",
+    "conflict",
+  );
+  await layout(page);
+  await axe(page);
+  await snap(page, info, "four-state-candidates");
 });
