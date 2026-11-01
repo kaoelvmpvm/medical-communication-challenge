@@ -1,29 +1,12 @@
 // Classroom-friendly, opt-in interaction sound effects. No external audio assets.
-const KEY = "medical-challenge-sound-v1";
-let enabled = false;
 let audioContext = null;
-try {
-  enabled = localStorage.getItem(KEY) === "on";
-} catch {
-  // Private browsing/storage restrictions must not block the game.
-}
-
+// Sounds are always enabled. Actual playback still follows browser gesture rules.
 export function isSoundEnabled() {
-  return enabled;
-}
-
-export function setSoundEnabled(next) {
-  enabled = Boolean(next);
-  try {
-    localStorage.setItem(KEY, enabled ? "on" : "off");
-  } catch {
-    // The toggle still works for the current page when storage is unavailable.
-  }
-  return enabled;
+  return true;
 }
 
 export function playUiSound(kind = "tap") {
-  if (!enabled || typeof window === "undefined") return;
+  if (typeof window === "undefined") return;
   const AudioConstructor = window.AudioContext || window.webkitAudioContext;
   if (!AudioConstructor) return;
   try {

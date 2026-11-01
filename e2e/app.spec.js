@@ -44,7 +44,7 @@ async function startStudent(page, role, stage = 1, round = 1, index = 0) {
     })
     .click();
   await page.locator('[name="stage"]').selectOption(String(stage));
-  await page.locator('[name="round"]').selectOption(String(round));
+  await expect(page.locator('[name="round"]')).toHaveCount(0);
   if (role === "patient" && stage !== 1)
     await page
       .getByLabel("教師提供的病例碼", { exact: true })
@@ -355,8 +355,7 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
   await expect(page.locator(".phase-one-grid > .symptom-card")).toHaveCount(
     symptoms.length,
   );
-  await page.getByRole("button", { name: "清空症狀紀錄" }).click();
-  await page.getByRole("button", { name: "確認", exact: true }).click();
+  await page.getByRole("button", { name: "一鍵清空" }).click();
   await expect(page.locator('.symptom-card[data-state="unknown"]')).toHaveCount(
     symptoms.length,
   );
@@ -380,9 +379,8 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
   );
   await page.getByRole("button", { name: "繼續問診" }).click();
   await expect(page.locator("[data-question-count]")).toHaveText("1");
-  await page.getByRole("button", { name: "清空症狀紀錄" }).click();
-  await page.getByRole("button", { name: "確認", exact: true }).click();
-  await expect(page.locator("[data-question-count]")).toHaveText("1");
+  await page.getByRole("button", { name: "一鍵清空" }).click();
+  await expect(page.locator("[data-question-count]")).toHaveText("0");
   await layout(page);
   await axe(page);
   await snap(page, info, "independent-doctor");
@@ -497,7 +495,7 @@ async function loginCorrupt(page) {
   await page.getByRole("button", { name: "解鎖紀錄中心" }).click();
 }
 
-test("stage-one random cases survive refresh, redraws and revisits; only confirmed new rounds draw", async ({
+test("stage-one random cases persist on refresh; next patient draws and round selection is absent", async ({
   page,
 }, info) => {
   await page.addInitScript(() => {
@@ -515,77 +513,34 @@ test("stage-one random cases survive refresh, redraws and revisits; only confirm
       },
     });
   });
-  await startStudent(page, "patient", 1, 1);
-  await expect(page.locator('[name="code"]')).toHaveCount(0);
-  await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(
-    cases[4].notes[0].text,
-  );
+  await startStudent(page, "patient", 1);
+  await expect(page.locator('[name="round"],[name="code"]')).toHaveCount(0);
+  await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(cases[4].notes[0].text);
+  await expect(page.locator(".disease-code strong")).toHaveText("9274");
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
-  await expect(page.locator(".disease-code strong")).toHaveText("9274");
-  for (const entry of cases)
-    await expect(page.locator("body")).not.toContainText(entry.disease);
   await page.reload();
-  await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(
-    cases[4].notes[0].text,
-  );
+  await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(cases[4].notes[0].text);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(0);
-  await expect(page.locator(".disease-code strong")).toHaveText("9274");
-  await page.locator(".body-marker").first().click();
-  expect(await page.evaluate(() => window.__caseDraws)).toBe(0);
+  await page.evaluate(() => { window.__nextCase = 2; });
+  await page.getByRole("button", { name: "下一位病患" }).click();
+  await expect(page.locator(`#${cases[2].notes[0].id}`)).toContainText(cases[2].notes[0].text);
+  expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
+  await page.reload();
+  await expect(page.locator(".disease-code strong")).toHaveText(cases[2].diseaseCode);
   await layout(page);
   await axe(page);
   await snap(page, info, "stage-one-patient");
-  await page.getByRole("button", { name: "更換階段／回合" }).click();
-  await page.locator('[name="round"]').selectOption("2");
-  await page.evaluate(() => {
-    window.__nextCase = 2;
-  });
-  await page.getByRole("button", { name: "開始回合", exact: true }).click();
-  expect(await page.evaluate(() => window.__caseDraws)).toBe(0);
-  await page.getByRole("button", { name: "取消", exact: true }).click();
-  expect(await page.evaluate(() => window.__caseDraws)).toBe(0);
-  await page.getByRole("button", { name: "開始回合", exact: true }).click();
+  await page.getByRole("button", { name: "更換階段" }).click();
+  await expect(page.locator('[name="round"]')).toHaveCount(0);
+  await page.locator('[name="stage"]').selectOption("2");
+  await page.getByLabel("教師提供的病例碼", { exact: true }).fill(makeCode(3, 2, 5));
+  await page.getByRole("button", { name: "載入病例", exact: true }).click();
   await page.getByRole("button", { name: "確認", exact: true }).click();
-  await expect(page.locator(`#${cases[2].notes[0].id}`)).toContainText(
-    cases[2].notes[0].text,
-  );
-  expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
-  await page.getByRole("button", { name: "更換階段／回合" }).click();
-  await page.locator('[name="round"]').selectOption("1");
-  await page.getByRole("button", { name: "開始回合", exact: true }).click();
-  await page.getByRole("button", { name: "確認", exact: true }).click();
-  await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(
-    cases[4].notes[0].text,
-  );
-  expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
-  const before = await page.evaluate(() =>
-    sessionStorage.getItem("medical-challenge-stage-one-patient-v1"),
-  );
-  await page.getByRole("button", { name: "更換階段／回合" }).click();
-  await page.locator('[name="round"]').selectOption("3");
-  await page.evaluate(() => {
-    const original = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (key, value) {
-      if (key === "medical-challenge-stage-one-patient-v1")
-        throw new DOMException("quota", "QuotaExceededError");
-      return original.call(this, key, value);
-    };
-  });
-  await page.getByRole("button", { name: "開始回合", exact: true }).click();
-  await page.getByRole("button", { name: "確認", exact: true }).click();
-  await expect(page.locator("#student-error")).toContainText("無法保存");
+  await expect(page.locator(".disease-code strong")).toHaveText(cases[3].diseaseCode);
+  await page.getByRole("button", { name: "下一位病患" }).click();
   await expect(page.locator(".body-note")).toHaveCount(0);
-  expect(
-    await page.evaluate(() =>
-      sessionStorage.getItem("medical-challenge-stage-one-patient-v1"),
-    ),
-  ).toBe(before);
-  await page.reload(); // remove injected storage failure; no patient content is restored from setup.
-  await expect(page.locator(".body-note")).toHaveCount(0);
-  await startStudent(page, "doctor", 1, 1);
-  await expect(page.locator(".body-note")).toHaveCount(0);
-  await page.reload();
-  await expect(page.locator(".body-note")).toHaveCount(0);
+  await expect(page.locator('[name="stage"]')).toHaveValue("2");
+  await expect(page.getByLabel("教師提供的病例碼", { exact: true })).toHaveValue("");
 });
 
 test("teacher can query all twelve internal codes; patient sees only stable identifier and supplied case art", async ({

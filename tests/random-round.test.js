@@ -125,7 +125,9 @@ test("stage-one doctor renders twenty-eight continuous records, no categories, p
     'data-action="open-guess"',
   ])
     assert.ok(!html.includes(forbidden));
-  assert.ok(html.includes('data-action="open-clear"'));
+  assert.ok(studentStatus(s, 6).includes('data-action="reset-doctor"'));
+  assert.ok(!studentStatus(s, 6).includes("更換階段／回合"));
+  assert.ok(!studentStatus(s, 6).includes("第 <strong>1</strong> / 5 回合"));
   assert.ok(!studentStatus(s, 6).includes("data-question-count"));
   assert.equal(countOralQuestion(s), false);
   assert.equal(manualGuess(s, "cold"), false);
@@ -136,4 +138,28 @@ test("stage-one doctor renders twenty-eight continuous records, no categories, p
   const stage2 = createIndependentSession("doctor", 2, 1);
   assert.equal(manualGuess(stage2, "cold"), true);
   assert.ok(studentStatus(stage2, 6).includes("data-question-count"));
+});
+
+test("next patient draws a new case without exposing a round picker and survives refresh", () => {
+  const storage = memory();
+  const draws = [4, 4, 6];
+  let calls = 0;
+  const rounds = createPatientRounds(storage, () => draws[calls++]);
+  assert.deepEqual(rounds.next(), { round: 1, caseIndex: 4 });
+  assert.deepEqual(rounds.next(), { round: 2, caseIndex: 5 });
+  assert.deepEqual(rounds.resume(), { round: 2, caseIndex: 5 });
+  rounds.pause();
+  assert.equal(rounds.resume(), null);
+  assert.deepEqual(rounds.next(), { round: 1, caseIndex: 6 });
+  assert.equal(calls, 3);
+});
+test("failed new-patient persistence does not change the displayed case", () => {
+  const storage = memory();
+  const rounds = createPatientRounds(storage, () => 2);
+  const before = rounds.next();
+  const raw = storage.getItem(PATIENT_ROUNDS_KEY);
+  storage.setItem = () => { throw new Error("quota"); };
+  assert.throws(() => rounds.next(), /無法保存/);
+  assert.deepEqual(rounds.resume(), before);
+  assert.equal(storage.getItem(PATIENT_ROUNDS_KEY), raw);
 });

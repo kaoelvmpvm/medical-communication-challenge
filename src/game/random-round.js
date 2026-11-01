@@ -65,6 +65,20 @@ export function createPatientRounds(storage, draw = drawCaseIndex) {
     }
   }
   return {
+    next() {
+      const book = read();
+      const previous = book.activeRound === null ? null : book.rounds[book.activeRound];
+      const round = book.activeRound === null ? 1 : book.activeRound % 5 + 1;
+      let index = draw();
+      if (!Number.isInteger(index) || index < 0 || index >= cases.length)
+        throw new Error("病例抽取失敗，沒有更換病患。");
+      if (cases.length > 1 && index === previous)
+        index = (index + 1) % cases.length;
+      book.rounds[round] = index;
+      book.activeRound = round;
+      save(book);
+      return { round, caseIndex: index };
+    },
     start(round) {
       if (!validRound(round)) throw new Error("請選擇第一至第五回合。");
       const book = read();

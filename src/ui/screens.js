@@ -51,7 +51,7 @@ function candidatePanel(diseases, matching) {
 
 export function doctor(s, diseases, matching) {
   if (s.stage === 1)
-    return `${candidatePanel(diseases, matching)}<section class="panel record-panel phase-one-record" aria-labelledby="screen-title"><div class="section-heading"><h1 id="screen-title" tabindex="-1">症狀紀錄</h1>${b("清空症狀紀錄", "open-clear", { kind: "secondary" })}</div><p class="section-intro">依病人的口頭回答，選擇「有」或「沒有」；需要修改時可直接切換或清除。</p><div class="symptom-grid phase-one-grid">${symptoms.map((symptom) => symptomCard(symptom, s.records[symptom.id], 2)).join("")}</div></section>`;
+    return `${candidatePanel(diseases, matching)}<section class="panel record-panel phase-one-record" aria-labelledby="screen-title"><div class="section-heading"><h1 id="screen-title" tabindex="-1">症狀紀錄</h1></div><p class="section-intro">依病人的口頭回答，選擇「有」或「沒有」；需要修改時可直接切換或清除。</p><div class="symptom-grid phase-one-grid">${symptoms.map((symptom) => symptomCard(symptom, s.records[symptom.id], 2)).join("")}</div></section>`;
 
   if (s.stage === 3)
     return `<section class="panel practice-panel"><span class="eyebrow">先聽完整，再確認理解</span><h1 tabindex="-1" id="screen-title">把理解，說給對方聽。</h1><p class="lead">請病患先完整描述，不急著猜疾病。你可以先傾聽，再用自己的話回述。</p><ol class="practice-steps"><li><strong>聽位置與感覺</strong><p>對方說了哪些身體感受？不要自行加入沒聽到的資訊。</p></li><li><strong>回述重點</strong><p>「我聽到你說……，我理解得對嗎？」</p></li><li><strong>邀請補充</strong><p>「還有什麼讓你擔心，或想再補充的？」</p></li></ol>${notice("這個階段重點是完整描述與確認理解，不進行疾病猜測或競賽計分。")}${s.independent ? `<section class="followup-panel"><h2>補充詢問</h2><p>選一句念給病人聽，或在下方整理自己的補充問題。不計分。</p>${["可以再說明不舒服的位置嗎？", "這種感覺怎麼影響你的日常生活？", "你最擔心的是哪一件事？"].map((text) => b(text, "followup", { extra: `data-text="${text}"` })).join("")}<label>我的補充問題<textarea id="followup-notes" rows="3" maxlength="2000" placeholder="例如：這種感覺持續多久？">${e(s.followupNotes || "")}</textarea></label><p class="followup-status" role="status">${e(s.lastFollowup || "")}</p></section>` : b("完成這位病患的練習", "practice-next", { kind: "primary" })}</section>`;
@@ -66,7 +66,7 @@ export function doctor(s, diseases, matching) {
     )
     .join("")}</section>
   <aside class="doctor-aside">
-    ${s.solved ? `<section class="panel result-panel"><span class="success-symbol" aria-hidden="true">✓</span><h2>這次推理符合模擬病例！</h2><p>你用了 ${s.questionCount} 次提問。接著換位思考，練習下一個情境。</p>${b(s.caseIndex === 5 ? "查看階段回顧" : "下一位病患", "next", { kind: "primary" })}</section>` : `<section class="panel decision-panel"><span class="eyebrow">整理線索，再做決定</span><h2>準備好提出猜測了嗎？</h2><p>不必只剩一個候選，也可以先繼續問。猜測前會再次確認。</p>${b("猜測疾病", "open-guess", { kind: "primary" })}${b("清空症狀紀錄", "open-clear", { kind: "quiet" })}</section>`}
+    ${s.solved ? `<section class="panel result-panel"><span class="success-symbol" aria-hidden="true">✓</span><h2>這次推理符合模擬病例！</h2><p>你用了 ${s.questionCount} 次提問。接著換位思考，練習下一個情境。</p>${b(s.caseIndex === 5 ? "查看階段回顧" : "下一位病患", "next", { kind: "primary" })}</section>` : `<section class="panel decision-panel"><span class="eyebrow">整理線索，再做決定</span><h2>準備好提出猜測了嗎？</h2><p>不必只剩一個候選，也可以先繼續問。猜測前會再次確認。</p>${b("猜測疾病", "open-guess", { kind: "primary" })}</section>`}
     ${questionPanel(s)}
     ${s.stage === 2 && !s.independent ? historyPanel(s) : ""}
     <section class="tip-card"><span aria-hidden="true">ⓘ</span><p>紀錄的是你聽到的資訊，不是病患的原始答案。可以切換、清除，再重新整理。</p></section>

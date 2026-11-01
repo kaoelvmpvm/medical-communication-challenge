@@ -459,3 +459,9 @@
     transform: none;
   }
 }
+
+/* Tablet-friendly one-tap controls. */
+.session-status .status-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.patient-next-action { display:flex; justify-content:center; margin:26px auto 10px; }
+.patient-next-action .button { min-width:min(100%,270px); min-height:52px; border-radius:14px; font-size:17px; }
+@media(max-width:700px){.patient-next-action .button{width:100%;}}

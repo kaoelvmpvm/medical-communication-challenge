@@ -1,7 +1,7 @@
 import "./style.css";
 import "./teacher.css";
 import "./art.css";
-import { isSoundEnabled, setSoundEnabled, playUiSound } from "./ui/sound.js";
+import { playUiSound } from "./ui/sound.js";
 import { displayVersion } from "./data/version.js";
 import { cases, patientView } from "./data/cases.js";
 import { symptoms } from "./data/symptoms.js";
@@ -16,7 +16,6 @@ import {
   selectAnswer,
   submitAnswer,
   manualGuess,
-  retry,
 } from "./game/engine.js";
 import { createPatientRounds } from "./game/random-round.js";
 import { readCode } from "./game/codes.js";
@@ -35,7 +34,7 @@ import { artPlaceholder } from "./ui/case-art.js";
 import { observeBodyMap } from "./ui/body-lines.js";
 import { TeacherApp } from "./teacher/controller.js";
 const app = document.querySelector("#app");
-app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><img class="header-logo" data-art-kind="header-logo" src="${e(portalArt.title || "")}" width="2172" height="724" alt="醫問到底！"><span class="brand-fallback" hidden>醫問到底！</span></a><div class="header-actions"><button class="sound-toggle" type="button" data-action="toggle-sound" aria-pressed="${isSoundEnabled()}" aria-label="${isSoundEnabled() ? "關閉音效" : "開啟音效"}" title="音效開關">${isSoundEnabled() ? "♪ 音效開" : "♪ 音效關"}</button><button class="button quiet" type="button" data-action="home">角色入口</button></div></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
+app.innerHTML = `<a class="skip-link" href="#main">跳至主要內容</a><header class="app-header"><div class="header-inner"><a class="brand" href="./" aria-label="醫問到底，回到角色入口"><img class="header-logo" data-art-kind="header-logo" src="${e(portalArt.title || "")}" width="2172" height="724" alt="醫問到底！"><span class="brand-fallback" hidden>醫問到底！</span></a><div class="header-actions"><button class="button quiet" type="button" data-action="home">角色入口</button></div></div></header><div id="status-host"></div><main id="main" class="main-shell"></main><footer class="app-footer"><span>版本 ${displayVersion}</span><span>板橋國中 高勳頊老師設計開發</span></footer><div id="tools-host"></div><div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>`;
 const main = document.querySelector("#main"),
   statusHost = document.querySelector("#status-host"),
   toolsHost = document.querySelector("#tools-host"),
@@ -48,6 +47,7 @@ let view = "portal",
   teacher = null,
   origin = null,
   confirmAction = null;
+let preferredStage = 1;
 let lastRenderedScreenKey = "";
 function announce(text) {
   announcer.textContent = text;
@@ -125,7 +125,7 @@ function render({ focus = true } = {}) {
   clear();
   if (view === "portal") main.innerHTML = portal(portalArt);
   else if (view === "login") main.innerHTML = login();
-  else if (view === "setup") main.innerHTML = setup(role, session);
+  else if (view === "setup") main.innerHTML = setup(role, session || { stage: preferredStage });
   else if (view === "student" && session) {
     const matching = matches(session.records);
     statusHost.innerHTML = studentStatus(session, matching.length);
@@ -167,7 +167,7 @@ function render({ focus = true } = {}) {
             artUrl: caseArtUrl(cases[session.caseIndex].id),
           },
           session.stage === 2 ? optionsFor(session) : [],
-        );
+        ) + `<div class="patient-next-action">${b("下一位病患", "next-patient", { kind: "primary" })}</div>`;
       observer = observeBodyMap(main);
     }
   }
@@ -187,19 +187,18 @@ function pauseRandomCase() {
   }
 }
 function loadStudent(data) {
-  const stage = Number(data.get("stage")),
-    round = Number(data.get("round"));
+  const stage = Number(data.get("stage"));
   let next;
   try {
     if (role === "patient" && stage !== 1) {
       const decoded = readCode(data.get("code"));
-      if (decoded.stage !== stage || decoded.round !== round)
-        throw new Error("病例碼與所選階段／回合不一致，請向教師確認。");
+      if (decoded.stage !== stage)
+        throw new Error("病例碼與所選階段不一致，請向教師確認。");
       if (!cases[decoded.caseIndex])
         throw new Error("這份載入碼對應的完整病例內容尚未提供，尚未載入。");
-      next = createIndependentSession(role, stage, round, decoded.caseIndex);
+      next = createIndependentSession(role, stage, decoded.round, decoded.caseIndex);
     } else if (role === "doctor")
-      next = createIndependentSession(role, stage, round);
+      next = createIndependentSession(role, stage, 1);
   } catch (error) {
     document.querySelector("#student-error").textContent = error.message;
     return;
@@ -207,24 +206,22 @@ function loadStudent(data) {
   const apply = () => {
     try {
       if (role === "patient" && stage === 1) {
-        // Draw only here, after the explicit start/confirmation; never during render.
-        const loaded = createPatientRounds(sessionStorage).start(round);
-        next = createIndependentSession("patient", 1, round, loaded.caseIndex);
+        const loaded = createPatientRounds(sessionStorage).next();
+        next = createIndependentSession("patient", 1, loaded.round, loaded.caseIndex);
       } else pauseRandomCase();
+      preferredStage = stage;
       session = next;
       view = "student";
       render();
     } catch (error) {
       document.querySelector("#student-error").textContent =
-        error.message || "無法讀取此分頁的回合，沒有重新抽取病例。";
+        error.message || "無法抽取或保存新病患，請保留原病例並請教師協助。";
     }
   };
   if (session)
     confirm(
-      "確認開始這個階段／回合？",
-      stage === 1
-        ? "第一階段已開始的回合會沿用原病例；尚未載入的新回合才隨機抽取。這台平板的練習紀錄會重設，教師紀錄不受影響。"
-        : "這會清空此平板的症狀、回答與輔助提問數，不會更動教師正式紀錄。",
+      "確認切換練習階段？",
+      "這會重設此平板的練習狀態，教師正式成績不受影響。",
       apply,
     );
   else apply();
@@ -283,6 +280,7 @@ app.addEventListener("click", (event) => {
   if (action === "choose-role") {
     session = null;
     role = null;
+    preferredStage = 1;
     clear();
     if (target.dataset.role === "teacher") view = "login";
     else {
@@ -299,13 +297,40 @@ app.addEventListener("click", (event) => {
     document.querySelector("#login-error").textContent = "";
     return;
   }
-  if (action === "change-round" && session) {
+  if (action === "change-stage" && session) {
+    preferredStage = session.stage;
     role = session.role;
     view = "setup";
     render();
     return;
   }
   if (view !== "student" || !session) return;
+  if (action === "reset-doctor" && session.role === "doctor") {
+    session = createIndependentSession("doctor", session.stage, 1);
+    render();
+    announce("醫師端已回到初始狀態，教師成績不受影響。");
+    return;
+  }
+  if (action === "next-patient" && session.role === "patient") {
+    if (session.stage === 1) {
+      try {
+        const loaded = createPatientRounds(sessionStorage).next();
+        session = createIndependentSession("patient", 1, loaded.round, loaded.caseIndex);
+        render();
+        announce("已隨機載入下一位病患。");
+      } catch (error) {
+        modal(`<h2 id="dialog-title">無法切換病患</h2><p>${e(error.message || "病例抽取失敗，原病例仍保留。")}</p><div class="dialog-actions">${b("返回", "cancel", { kind: "primary" })}</div>`);
+      }
+    } else {
+      preferredStage = session.stage;
+      session = null;
+      role = "patient";
+      view = "setup";
+      render();
+      announce("請下一位病患輸入自己的病例碼。");
+    }
+    return;
+  }
   if (action === "mark") {
     if (mark(session, target.dataset.id, JSON.parse(target.dataset.value)))
       updateRecords(target.dataset.id);
@@ -326,22 +351,6 @@ app.addEventListener("click", (event) => {
     session.stage === 2
   )
     return showGuess();
-  if (action === "open-clear" && session.role === "doctor")
-    return confirm(
-      "清空症狀紀錄？",
-      session.stage === 1
-        ? "症狀卡片將恢復未確認，教師紀錄不受影響。"
-        : "症狀將恢復未確認，提問次數保留。教師紀錄不受影響。",
-      () => {
-        retry(session);
-        render();
-        announce(
-          session.stage === 1
-            ? "症狀紀錄已清空。"
-            : "紀錄已清空，輔助提問數保留。",
-        );
-      },
-    );
   if (action === "answer") {
     if (selectAnswer(session, target.dataset.id)) {
       const y = scrollY;
@@ -496,21 +505,12 @@ dialog.addEventListener("cancel", (event) => {
   event.preventDefault();
   close();
 });
-// Sound plays only after an explicit user gesture and is off by default.
+// Sound is always enabled and plays after user interaction.
 app.addEventListener("click", (event) => {
   const control = event.target.closest("button");
   if (!control || control.disabled) return;
-  if (control.dataset.action === "toggle-sound") {
-    const enabled = setSoundEnabled(!isSoundEnabled());
-    control.setAttribute("aria-pressed", String(enabled));
-    control.setAttribute("aria-label", enabled ? "關閉音效" : "開啟音效");
-    control.textContent = enabled ? "♪ 音效開" : "♪ 音效關";
-    if (enabled) playUiSound("enable");
-    announce(enabled ? "音效已開啟" : "音效已關閉");
-    return;
-  }
   const action = control.dataset.action || "";
-  const type = action === "mark" ? "mark" : ["choose-role", "home", "change-round"].includes(action) ? "navigate" : "tap";
+  const type = action === "mark" ? "mark" : ["choose-role", "home", "change-stage", "next-patient"].includes(action) ? "navigate" : "tap";
   playUiSound(type);
 }, true);
 

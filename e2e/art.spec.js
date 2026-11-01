@@ -81,9 +81,10 @@ test("supplied logo, hero and three role cards load with compact layout, keyboar
   for (const text of removed)
     await expect(page.locator("body")).not.toContainText(text);
   await expect(page.locator(".app-footer")).toHaveText(
-    "教學模擬・不是醫療診斷工具｜版本 V1.5板橋國中 高勳頊老師設計開發",
+    "版本 V1.5板橋國中 高勳頊老師設計開發",
   );
   await expect(page.locator(".app-header")).not.toContainText("1.5");
+  await expect(page.locator(".sound-toggle")).toHaveCount(0);
   for (const text of ["開始問診", "開始描述", "進入教師紀錄"])
     await expect(page.getByText(text, { exact: true })).toBeVisible();
   const axe = await new AxeBuilder({ page })
