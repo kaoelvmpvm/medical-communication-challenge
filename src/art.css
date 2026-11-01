@@ -565,3 +565,26 @@
   .music-controls { gap:4px; }
   .music-volume input[type="range"] { width:63px; }
 }
+
+/* Stage two: the oral question is physically attached to its body-region records. */
+.stage-two-record { max-width: none; }
+.stage-two-record .symptom-group { border-top: 1px solid var(--line); padding-top: 24px; margin-top: 20px; }
+.stage-two-record .symptom-group:first-of-type { border-top: 0; margin-top: 0; }
+.stage-two-record .symptom-group > h3 { font-size: 19px; margin-bottom: 12px; }
+.stage-two-record .inline-question-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr)); gap: 10px; margin: 0 0 16px; }
+.stage-two-record .inline-question-item { min-width: 0; }
+.stage-two-record .inline-question-button { height: 100%; width: 100%; min-height: 88px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 42px 13px 15px; border: 1.5px solid #8ab3ad; background: #edf7f4; }
+.stage-two-record .question-prompt-label { display: block; font-size: 12px; color: #0b7168; font-weight: 700; margin: 0; }
+.stage-two-record .question-prompt-text { font-weight: 650; font-size: 16px; line-height: 1.5; }
+.stage-two-record .inline-question-button.is-selected { background: #dcf3e8; border: 2px solid #087f75; }
+.stage-two-record .selected-question { margin: 6px 0 0; font-size: 13px; font-weight: 650; color: #086c59; }
+.stage-two-record .symptom-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stage-two-record .answer-handoff { padding-top: 22px; }
+@media(max-width:950px) {
+  .stage-two-record .symptom-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media(max-width:600px) {
+  .stage-two-record .symptom-grid { grid-template-columns: 1fr; }
+  .stage-two-record .inline-question-list { grid-template-columns: 1fr; }
+  .stage-two-record .inline-question-button { min-height: 80px; }
+}

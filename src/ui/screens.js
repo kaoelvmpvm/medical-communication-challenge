@@ -49,6 +49,29 @@ function candidatePanel(diseases, matching) {
   return `<section class="candidates-panel panel" aria-labelledby="candidate-title"><details class="candidate-details" open><summary><span><span class="eyebrow">只比對模擬情境</span><span id="candidate-title" class="summary-title">可能疾病 <span class="count-badge" data-match-summary>${matching.length} / ${diseases.length} 個未衝突</span></span></span><span class="collapse-label">展開／收合 <span aria-hidden="true">⌄</span></span></summary><div class="candidate-grid" data-candidates>${candidateCards(diseases, matching)}</div></details><p class="candidate-disclaimer">只比對已設定的教材線索；資料不足或不適用不參與排除。未衝突不代表確診，也不能用來排除真實疾病。</p></section>`;
 }
 
+// Each second-stage oral question belongs to the symptom group in which it is displayed.
+export const stageTwoQuestionGroups = Object.freeze({
+  general: ["body"],
+  head: ["head"],
+  airway: ["nose", "throat", "chest"],
+  gut: ["stomach"],
+  urinary: ["bladder"],
+  eyes: ["eyes"],
+  skin: ["skin"],
+  ears: ["ears"],
+  period: ["period"],
+});
+
+function inlineQuestions(systemId, s) {
+  const ids = stageTwoQuestionGroups[systemId] || [];
+  const items = questions.filter((q) => ids.includes(q.id));
+  return `<div class="inline-question-list" aria-label="${e(systemId)}部位的問診題目">${items.map((question) => {
+    const selected = s.pending === question.id;
+    const disabled = s.solved || (!s.independent && s.pending && !s.submitted);
+    return `<div class="inline-question-item"><button type="button" id="question-${question.id}" class="question-button inline-question-button ${selected ? "is-selected" : ""}" data-action="ask" data-id="${question.id}" aria-pressed="${selected}" ${disabled ? "disabled" : ""}><span class="question-prompt-label">問診問題</span><span class="question-prompt-text">${e(question.title)}</span><span class="question-arrow" aria-hidden="true">↗</span></button>${selected ? '<p class="selected-question" role="status">✓ 已選這題，請口頭詢問病人。</p>' : ""}</div>`;
+  }).join("")}</div>`;
+}
+
 export function doctor(s, diseases, matching) {
   if (s.stage === 1)
     return `${candidatePanel(diseases, matching)}<section class="panel record-panel phase-one-record" aria-labelledby="screen-title"><div class="section-heading"><h1 id="screen-title" tabindex="-1">症狀紀錄</h1></div><p class="section-intro">依病人的口頭回答，選擇「有」或「沒有」；需要修改時可直接切換或清除。</p><div class="symptom-grid phase-one-grid">${symptoms.map((symptom) => symptomCard(symptom, s.records[symptom.id], 2)).join("")}</div></section>`;
@@ -56,34 +79,24 @@ export function doctor(s, diseases, matching) {
   if (s.stage === 3)
     return `<section class="panel practice-panel"><span class="eyebrow">先聽完整，再確認理解</span><h1 tabindex="-1" id="screen-title">把理解，說給對方聽。</h1><p class="lead">請病患先完整描述，不急著猜疾病。你可以先傾聽，再用自己的話回述。</p><ol class="practice-steps"><li><strong>聽位置與感覺</strong><p>對方說了哪些身體感受？不要自行加入沒聽到的資訊。</p></li><li><strong>回述重點</strong><p>「我聽到你說……，我理解得對嗎？」</p></li><li><strong>邀請補充</strong><p>「還有什麼讓你擔心，或想再補充的？」</p></li></ol>${notice("這個階段重點是完整描述與確認理解，不進行疾病猜測或競賽計分。")}${s.independent ? `<section class="followup-panel"><h2>補充詢問</h2><p>選一句念給病人聽，或在下方整理自己的補充問題。不計分。</p>${["可以再說明不舒服的位置嗎？", "這種感覺怎麼影響你的日常生活？", "你最擔心的是哪一件事？"].map((text) => b(text, "followup", { extra: `data-text="${text}"` })).join("")}<label>我的補充問題<textarea id="followup-notes" rows="3" maxlength="2000" placeholder="例如：這種感覺持續多久？">${e(s.followupNotes || "")}</textarea></label><p class="followup-status" role="status">${e(s.lastFollowup || "")}</p></section>` : b("完成這位病患的練習", "practice-next", { kind: "primary" })}</section>`;
   return `${candidatePanel(diseases, matching)}
-  <div class="doctor-layout"><section class="panel record-panel" aria-labelledby="screen-title"><div class="section-heading"><div><span class="eyebrow">${s.stage === 1 ? "聽完口頭回答，再記錄" : "聽完病患回答，再記錄"}</span><h1 id="screen-title" tabindex="-1">症狀紀錄</h1></div><span class="subtle-badge" data-record-progress>${Object.keys(s.records).length} / ${symptoms.length} 已確認</span></div><p class="section-intro">用「有／沒有」整理聽到的線索。沒問到的項目，先留在未確認。</p><nav class="system-nav" aria-label="症狀分組">${systems.map((system) => `<a href="#group-${system.id}">${system.name}</a>`).join("")}</nav>${systems
-    .map(
-      (system) =>
-        `<section class="symptom-group" id="group-${system.id}" aria-labelledby="heading-${system.id}"><h3 id="heading-${system.id}"><span aria-hidden="true">${system.icon}</span> ${system.name}</h3><div class="symptom-grid">${symptoms
-          .filter((symptom) => symptom.system === system.id)
-          .map((symptom) => symptomCard(symptom, s.records[symptom.id]))
-          .join("")}</div></section>`,
-    )
-    .join("")}</section>
-  <aside class="doctor-aside">
-    ${s.solved ? `<section class="panel result-panel"><span class="success-symbol" aria-hidden="true">✓</span><h2>這次推理符合模擬病例！</h2><p>你用了 ${s.questionCount} 次提問。接著換位思考，練習下一個情境。</p>${b(s.caseIndex === 5 ? "查看階段回顧" : "下一位病患", "next", { kind: "primary" })}</section>` : `<section class="panel decision-panel"><span class="eyebrow">整理線索，再做決定</span><h2>準備好提出猜測了嗎？</h2><p>不必只剩一個候選，也可以先繼續問。猜測前會再次確認。</p>${b("猜測疾病", "open-guess", { kind: "primary" })}</section>`}
-    ${questionPanel(s)}
-    ${s.stage === 2 && !s.independent ? historyPanel(s) : ""}
-    <section class="tip-card"><span aria-hidden="true">ⓘ</span><p>紀錄的是你聽到的資訊，不是病患的原始答案。可以切換、清除，再重新整理。</p></section>
-  </aside></div>`;
+    <section class="panel record-panel stage-two-record" aria-labelledby="screen-title">
+      <div class="section-heading"><div><span class="eyebrow">第二階段・問診與推理</span><h1 id="screen-title" tabindex="-1">問診與症狀紀錄</h1></div>
+      <span class="subtle-badge" data-record-progress>${Object.keys(s.records).length} / ${symptoms.length} 已確認</span></div>
+      <p class="section-intro">選擇問題並詢問病人，再把聽到的症狀記錄下來。</p>
+      ${systems.map((system) => `<section class="symptom-group" id="group-${system.id}" aria-labelledby="heading-${system.id}">
+        <h3 id="heading-${system.id}"><span aria-hidden="true">${system.icon}</span> ${system.name}</h3>
+        ${inlineQuestions(system.id, s)}
+        <div class="symptom-grid">${symptoms.filter((symptom) => symptom.system === system.id).map((symptom) => symptomCard(symptom, s.records[symptom.id])).join("")}</div>
+      </section>`).join("")}
+      ${!s.independent && s.pending && !s.submitted ? `<div class="answer-handoff">${b("交給病患回答", "switch", { kind: "primary" })}</div>` : ""}
+    </section>`;
 }
 
-function questionPanel(s) {
-  return `<section class="panel question-panel"><span class="eyebrow">第二階段限定</span><h2>通用問診問題庫</h2><p>${s.independent ? "選好問題後念給病人聽，請病人選擇同一題回答。" : "選一個問題，再交給病患回答。每次選問都會計入提問數。"}</p>${!s.independent && s.pending && !s.submitted ? `${notice("還有一個問題等待病患回答。")}${b("交給病患回答", "switch", { kind: "primary" })}` : ""}${s.independent && s.pending ? `<p class="selected-question" role="status">已選問題：${e(questions.find((item) => item.id === s.pending).title)}。請口頭詢問病人。</p>` : ""}<div class="question-list">${questions.map((question) => `<button type="button" class="question-button" data-action="ask" data-id="${question.id}" ${s.solved || (!s.independent && s.pending && !s.submitted) ? "disabled" : ""}><span>${question.group}</span>${question.title}<span class="question-arrow" aria-hidden="true">↗</span></button>`).join("")}</div></section>`;
-}
-function historyPanel(s) {
-  return `<section class="panel history-panel"><h2>已確認的對話 <span class="count-badge">${s.history.length}</span></h2>${s.history.length ? `<ol>${s.history.map((entry, index) => `<li><span class="history-number">第 ${index + 1} 次對話</span><p><strong>醫師：</strong>${e(entry.question)}</p><p><strong>病患：</strong>${e(entry.answer)}</p></li>`).join("")}</ol>` : '<p class="empty-state">病患確認送出後，回答會出現在這裡。</p>'}</section>`;
-}
 
 export function patient(s, view, options) {
   const question = questions.find((item) => item.id === s.pending);
   const chosen = options.find((option) => option.id === s.selectedAnswer);
-  return `<section class="patient-heading"><div><span class="eyebrow">${s.stage === 1 ? "讀懂感受，只回答是或否" : "感受在這裡，請用自己的話說"}</span><h1 id="screen-title" tabindex="-1">我的身體，怎麼了？</h1><p>${s.stage === 1 ? "先讀情境；醫師提問時，依已知內容口頭回答「是」或「否」，不要直接念出描述。" : s.stage === 2 ? "看看情境中的身體感受，再回應醫師提出的問題。" : "看著身體圖，整理重點，主動向醫師說出完整的身體感受。"}</p></div><div class="patient-identity"><span class="private-label">▣ 僅供病患閱讀</span><span class="disease-code">疾病代碼 <strong>${e(view.diseaseCode)}</strong></span><span class="field-help">教材識別碼，非診斷代碼。</span></div></section>
+  return `<section class="patient-heading"><div><span class="eyebrow">${s.stage === 1 ? "讀懂感受，只回答是或否" : "感受在這裡，請用自己的話說"}</span><h1 id="screen-title" tabindex="-1">我的身體，怎麼了？</h1><p>${s.stage === 1 ? "先讀情境；醫師提問時，依已知內容口頭回答「是」或「否」，不要直接念出描述。" : s.stage === 2 ? "看看情境中的身體感受，再回應醫師提出的問題。" : "看著身體圖，整理重點，主動向醫師說出完整的身體感受。"}</p></div><div class="patient-identity"><span class="private-label">▣ 僅供病患閱讀</span></div></section>
   <div class="patient-visual-layout"><section class="panel patient-map-panel" aria-label="病情感受圖"><div class="map-heading"><span>情境中的身體感受</span><span class="map-instruction">點選編號，查看對應感受</span></div>${bodyMap(view)}${profileFacts(view.profile)}</section>${caseArt(view.artUrl)}</div>
   ${s.stage === 2 ? `<section class="panel answer-panel" aria-labelledby="answer-title"><div class="section-heading"><div><span class="eyebrow">${s.independent ? "先選擇，再確認回答" : "先選擇，再確認送出"}</span><h2 id="answer-title">回應醫師的問題</h2></div><span class="subtle-badge">${s.submitted ? (s.independent ? "✓ 已確認回答" : "✓ 已確認送出") : s.selectedAnswer ? (s.independent ? "已選擇・尚未確認" : "已選擇・尚未送出") : "等待選擇"}</span></div>${question ? `<blockquote class="current-question">${e(question.title)}</blockquote><div class="answer-options" role="group" aria-label="選擇病患回答">${options.map((option, index) => `<button type="button" class="answer-option ${s.selectedAnswer === option.id ? "selected" : ""}" data-action="answer" data-id="${option.id}" aria-pressed="${s.selectedAnswer === option.id}" ${s.submitted ? "disabled" : ""}><span class="option-number">${index + 1}</span><span>${e(option.text)}</span><span class="option-state">${s.selectedAnswer === option.id ? "✓ 已選擇" : "選擇"}</span></button>`).join("")}</div>${s.submitted ? `<div class="answer-analysis" role="status"><span class="eyebrow">${s.independent ? "已確認・表達品質解析" : "已送出・表達品質解析"}</span><h3>${e(chosen.quality)}</h3><p>${e(chosen.analysis)}</p></div>${s.independent ? `<p class="notice">請把確認的回答口頭告訴醫師。</p>` : b("交給醫師，查看回答", "switch", { kind: "primary" })}` : `<div class="answer-submit">${b(s.independent ? "確認回答" : "確認送出回答", "submit-answer", { kind: "primary", disabled: !s.selectedAnswer })}<p>${s.independent ? "確認後查看解析，再口頭回答醫師。" : "確認後才會顯示解析，醫師也才能看到你的回答。"}</p></div>`}` : `${s.independent ? `<p class="empty-state">先聽醫師口頭提問，再從上方選擇同一問題。</p>` : `<div class="empty-state">醫師還沒有選擇問題。先熟悉身體感受，再交給醫師選問。</div>${b("交給醫師選擇問題", "switch", { kind: "primary" })}`}`}</section>` : s.stage === 3 ? practicePanel(s) : `<div class="patient-bottom">${notice("已知內容只回答「是」或「否」。資料不足或不適用時，請教師判定並重新提問，不要猜成「否」。")}${s.independent ? `<p class="muted">讀完後請口頭回應醫師，不需交換平板。</p>` : b("我讀好了，交給醫師", "switch", { kind: "primary" })}</div>`}`;
 }

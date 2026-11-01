@@ -371,13 +371,12 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
   await axe(page);
   await snap(page, info, "stage-one-doctor");
   await startStudent(page, "doctor", 2);
-  await page.getByRole("button", { name: "猜測疾病", exact: true }).click();
-  await page.getByRole("radio", { name: "一般感冒", exact: true }).check();
-  await page.getByRole("button", { name: "確認提出猜測" }).click();
-  await expect(page.locator("dialog")).toContainText(
-    "請教師判定並登記正式提問數",
-  );
-  await page.getByRole("button", { name: "繼續問診" }).click();
+  await expect(page.locator(".decision-panel,.question-panel,[data-action='open-guess']")).toHaveCount(0);
+  await expect(page.locator(".inline-question-list")).toHaveCount(9);
+  await expect(page.locator(".inline-question-button")).toHaveCount(11);
+  await expect(page.locator(".symptom-card")).toHaveCount(symptoms.length);
+  await page.locator('#group-general [data-action="ask"][data-id="body"]').click();
+  await expect(page.locator('#group-general .selected-question')).toContainText("已選這題");
   await expect(page.locator("[data-question-count]")).toHaveText("1");
   await page.getByRole("button", { name: "一鍵清空" }).click();
   await expect(page.locator("[data-question-count]")).toHaveText("0");
@@ -516,7 +515,7 @@ test("stage-one random cases persist on refresh; next patient draws and round se
   await startStudent(page, "patient", 1);
   await expect(page.locator('[name="round"],[name="code"]')).toHaveCount(0);
   await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(cases[4].notes[0].text);
-  await expect(page.locator(".disease-code strong")).toHaveText("9274");
+  await expect(page.locator(".disease-code")).toHaveCount(0);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
   await page.reload();
   await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(cases[4].notes[0].text);
@@ -526,7 +525,7 @@ test("stage-one random cases persist on refresh; next patient draws and round se
   await expect(page.locator(`#${cases[2].notes[0].id}`)).toContainText(cases[2].notes[0].text);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
   await page.reload();
-  await expect(page.locator(".disease-code strong")).toHaveText(cases[2].diseaseCode);
+  await expect(page.locator(".disease-code")).toHaveCount(0);
   await layout(page);
   await axe(page);
   await snap(page, info, "stage-one-patient");
@@ -536,7 +535,7 @@ test("stage-one random cases persist on refresh; next patient draws and round se
   await page.getByLabel("教師提供的病例碼", { exact: true }).fill(makeCode(3, 2, 5));
   await page.getByRole("button", { name: "載入病例", exact: true }).click();
   await page.getByRole("button", { name: "確認", exact: true }).click();
-  await expect(page.locator(".disease-code strong")).toHaveText(cases[3].diseaseCode);
+  await expect(page.locator(".disease-code")).toHaveCount(0);
   await page.getByRole("button", { name: "下一位病患" }).click();
   await expect(page.locator(".body-note")).toHaveCount(0);
   await expect(page.locator('[name="stage"]')).toHaveValue("2");
@@ -573,7 +572,7 @@ test("teacher can query all twelve internal codes; patient sees only stable iden
     if (response.status() >= 400) failures.push(response.url());
   });
   await startStudent(page, "patient", 2, 1, 0);
-  await expect(page.locator(".disease-code strong")).toHaveText("4726");
+  await expect(page.locator(".disease-code")).toHaveCount(0);
   await expect(page.locator(".case-art img")).toHaveAttribute(
     "src",
     /\/medical-communication-challenge\/art\/cases\/cold\.webp$/,
@@ -605,9 +604,7 @@ test("new cases answer source-based questions, preserve unknown facts and condit
     await startStudent(page, "patient", 2, 1, index);
     const entry = cases[index],
       topic = topics[index - 6];
-    await expect(page.locator(".disease-code strong")).toHaveText(
-      entry.diseaseCode,
-    );
+    await expect(page.locator(".disease-code")).toHaveCount(0);
     const periodOptions = page.locator(
       '#patient-question option[value="period"]',
     );

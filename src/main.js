@@ -16,7 +16,6 @@ import {
   optionsFor,
   selectAnswer,
   submitAnswer,
-  manualGuess,
 } from "./game/engine.js";
 import { createPatientRounds } from "./game/random-round.js";
 import { readCode } from "./game/codes.js";
@@ -141,8 +140,6 @@ function render({ focus = true } = {}) {
           })),
           matching,
         );
-      if (session.stage === 2)
-        toolsHost.innerHTML = `<nav class="mobile-tools" aria-label="醫師常用操作">${b("查看問診題庫", "jump-questions")}${b("提出猜測", "open-guess", { kind: "primary" })}</nav>`;
       if (matchMedia("(max-width:700px)").matches)
         main.querySelector(".candidate-details")?.removeAttribute("open");
     } else {
@@ -215,11 +212,6 @@ function loadStudent(data) {
       apply,
     );
   else apply();
-}
-function showGuess() {
-  modal(
-    `<h2 id="dialog-title">提出這次疾病猜測</h2><p>請口頭告訴教師。猜測也算一次提問，請教師判定並登記。</p><form id="guess-form"><fieldset class="guess-options"><legend class="sr-only">選擇疾病</legend>${cases.map((entry) => `<label><input type="radio" name="disease" value="${entry.id}" required><span>${e(entry.disease)}</span></label>`).join("")}</fieldset><div class="dialog-actions">${b("繼續推理", "cancel")}<button type="submit" class="button primary" disabled id="confirm-guess">確認提出猜測</button></div></form>`,
-  );
 }
 function updateRecords(id) {
   const value = session.records[id];
@@ -353,18 +345,11 @@ app.addEventListener("click", (event) => {
   if (action === "ask") {
     if (ask(session, target.dataset.id)) {
       render({ focus: false });
-      const panel = main.querySelector(".selected-question");
-      panel?.setAttribute("tabindex", "-1");
-      panel?.focus();
+      const selected = main.querySelector(`#question-${target.dataset.id}`);
+      selected?.focus({ preventScroll: true });
     }
     return;
   }
-  if (
-    action === "open-guess" &&
-    session.role === "doctor" &&
-    session.stage === 2
-  )
-    return showGuess();
   if (action === "answer") {
     if (selectAnswer(session, target.dataset.id)) {
       const y = scrollY;
@@ -401,12 +386,6 @@ app.addEventListener("click", (event) => {
     });
     return;
   }
-  if (action === "jump-questions") {
-    const panel = main.querySelector(".question-panel");
-    panel.setAttribute("tabindex", "-1");
-    panel.focus();
-    return;
-  }
   if (
     action === "followup" &&
     session.role === "doctor" &&
@@ -439,27 +418,10 @@ app.addEventListener("submit", (event) => {
     return;
   }
   if (form.id === "student-form") return loadStudent(new FormData(form));
-  if (
-    form.id === "guess-form" &&
-    session?.role === "doctor" &&
-    session.stage === 2
-  ) {
-    const diseaseId = new FormData(form).get("disease");
-    if (manualGuess(session, diseaseId)) {
-      close();
-      render({ focus: false });
-      modal(
-        `<h2 id="dialog-title">已提出這次猜測</h2><p>你提出「${e(cases.find((entry) => entry.id === diseaseId).disease)}」。猜測已送出，請繼續挑戰！</p>${b("繼續問診", "cancel", { kind: "primary" })}`,
-      );
-    }
-  }
+
 });
 app.addEventListener("change", (event) => {
   if (view === "teacher") return;
-  if (event.target.name === "disease") {
-    document.querySelector("#confirm-guess").disabled = false;
-    return;
-  }
   if (event.target.id === "patient-question" && session?.role === "patient") {
     const questionId = event.target.value;
     if (

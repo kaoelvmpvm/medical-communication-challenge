@@ -134,9 +134,7 @@ test("all twelve patient illustrations decode from Pages subpaths, match case ID
     await expect(art).toHaveAttribute("alt", "模擬病例的情境插畫");
     await expect(page.locator(".body-svg")).toBeVisible();
     await expect(page.locator(".body-note")).toHaveCount(entry.notes.length);
-    await expect(page.locator(".disease-code strong")).toHaveText(
-      entry.diseaseCode,
-    );
+    await expect(page.locator(".disease-code")).toHaveCount(0);
     for (const disease of cases)
       await expect(page.locator("body")).not.toContainText(disease.disease);
     await expect(page.locator(".case-art")).not.toContainText("預留");

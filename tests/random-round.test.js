@@ -11,7 +11,9 @@ import {
   countOralQuestion,
   manualGuess,
 } from "../src/game/engine.js";
-import { doctor } from "../src/ui/screens.js";
+import { doctor, patient, stageTwoQuestionGroups } from "../src/ui/screens.js";
+import { questions } from "../src/data/questions.js";
+import { patientView } from "../src/data/cases.js";
 import { studentStatus, patientLoading } from "../src/ui/portal.js";
 function memory() {
   const values = new Map();
@@ -162,4 +164,32 @@ test("failed new-patient persistence does not change the displayed case", () => 
   assert.throws(() => rounds.next(), /無法保存/);
   assert.deepEqual(rounds.resume(), before);
   assert.equal(storage.getItem(PATIENT_ROUNDS_KEY), raw);
+});
+
+test("second-stage doctor embeds every question once beneath the appropriate symptom group", () => {
+  const s = createIndependentSession("doctor", 2, 1);
+  const html = doctor(s, cases.map(({ id, disease }) => ({ id, disease })), cases.map((c) => c.id));
+  const allIds = Object.values(stageTwoQuestionGroups).flat();
+  assert.equal(allIds.length, questions.length);
+  assert.deepEqual([...allIds].sort(), questions.map((q) => q.id).sort());
+  for (const [group, ids] of Object.entries(stageTwoQuestionGroups)) {
+    const section = html.split(`id="group-${group}"`)[1]?.split('</section>')[0] || "";
+    for (const id of ids) assert.ok(section.includes(`data-action="ask" data-id="${id}"`), `${group}: ${id}`);
+    assert.ok(section.indexOf("inline-question-list") < section.indexOf("symptom-grid"), group);
+  }
+  assert.equal((html.match(/data-symptom-card=/g)||[]).length, 28);
+  assert.equal((html.match(/data-action="ask"/g)||[]).length, questions.length);
+  assert.ok(!html.includes("decision-panel"));
+  assert.ok(!html.includes("question-panel"));
+  assert.ok(!html.includes("open-guess"));
+  assert.ok(!html.includes("猜測疾病"));
+});
+
+test("patient game screen no longer reveals four-digit disease code", () => {
+  const s = createIndependentSession("patient", 2, 1, 6);
+  const html = patient(s, patientView(cases[6]), []);
+  assert.ok(!html.includes("疾病代碼"));
+  assert.ok(!html.includes("disease-code"));
+  assert.ok(!html.includes(cases[6].diseaseCode));
+  assert.ok(html.includes("僅供病患閱讀"));
 });
