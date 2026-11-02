@@ -216,7 +216,7 @@ export function createIndependentSession(role, stage, round, caseIndex = null) {
     role === "patient" &&
     (!Number.isInteger(caseIndex) || caseIndex < 0 || caseIndex >= (stage === 1 ? stageOneCases.length : cases.length))
   )
-    throw new Error("請先載入有效病例碼");
+    throw new Error("請先抽取有效的病患情境。");
   return {
     ...createSession(stage),
     role,

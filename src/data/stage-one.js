@@ -1,3 +1,4 @@
+import { stageOneIdentifier } from "./disease-catalog.js";
 // V1.6 first-stage *fictional patients*, independent of stages 2–3.
 // Complete 20-bit yes/no records describe a specific patient, NOT disease rules.
 export const stageOneSymptoms = Object.freeze([
@@ -464,6 +465,7 @@ export const stageOneCases = Object.freeze(definitions.map((entry) => {
   ])));
   return Object.freeze({
     id: entry.id, disease: entry.disease, group: entry.group,
+    diseaseCode: stageOneIdentifier(entry.id).diseaseCode,
     evidence,
     notes: Object.freeze(entry.notes.map((note, i) => Object.freeze({
       ...note, id: `stage1-${entry.id}-${i}`,

@@ -4,8 +4,11 @@ import {
   diseaseCatalog,
   lookupDiseaseCode,
   diseaseIdentifier,
+  stageOneIdentifiers,
+  stageOneIdentifier,
 } from "../src/data/disease-catalog.js";
 import { cases, patientView } from "../src/data/cases.js";
+import { stageOneCases } from "../src/data/stage-one.js";
 
 test("all twelve teaching identifiers are unique fixed four-digit strings, not loading codes", () => {
   const expected = {
@@ -90,4 +93,20 @@ test("extended twelve-digit loading codes round-trip all twelve identifiers, pre
     readCode(payload + checksum).caseIndex,
     (0 - (1234567 % 6) + 6) % 6,
   );
+});
+
+test("stage-one patients show valid unique four-digit identifiers including new diseases", () => {
+  assert.equal(stageOneIdentifiers.length, 8);
+  const union = new Set([...diseaseCatalog.map(x => x.diseaseCode), ...stageOneIdentifiers.map(x => x.diseaseCode)]);
+  assert.equal(union.size, 16);
+  for (const entry of stageOneCases) {
+    const id = stageOneIdentifier(entry.id);
+    assert.ok(id);
+    assert.equal(entry.diseaseCode, id.diseaseCode);
+    assert.match(entry.diseaseCode, /^[0-9]{4}$/);
+    assert.equal(patientView(entry).diseaseCode, entry.diseaseCode);
+    assert.equal(lookupDiseaseCode(entry.diseaseCode).diseaseCode, entry.diseaseCode);
+  }
+  assert.equal(lookupDiseaseCode("6612").disease, "病毒性腸胃炎");
+  assert.equal(lookupDiseaseCode("6418").disease, "急性腸胃炎");
 });

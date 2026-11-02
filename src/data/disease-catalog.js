@@ -17,10 +17,32 @@ export const diseaseCatalog = Object.freeze(
     Object.freeze({ id, caseNumber, disease, diseaseCode }),
   ),
 );
+
+// Four-digit teaching identifiers displayed *after* entering a stage-one
+// fictional case. These are not the retired twelve-digit teacher load codes.
+export const stageOneIdentifiers = Object.freeze(
+  [
+    ["cold", "S01", "一般感冒", "4726"],
+    ["flu", "S02", "流行性感冒", "8193"],
+    ["covid", "S03", "COVID-19", "6408"],
+    ["allergy", "S04", "過敏性鼻炎", "3057"],
+    ["gastro", "S05", "病毒性腸胃炎", "6612"],
+    ["bacterial_gastro", "S06", "細菌性腸胃炎", "7539"],
+    ["functional_dyspepsia", "S07", "功能性消化不良", "2864"],
+    ["gerd", "S08", "胃食道逆流", "2948"],
+  ].map(([id, caseNumber, disease, diseaseCode]) =>
+    Object.freeze({ id, caseNumber, disease, diseaseCode }),
+  ),
+);
+export function stageOneIdentifier(id) {
+  return stageOneIdentifiers.find((entry) => entry.id === id);
+}
+
 export function lookupDiseaseCode(code) {
   const text = String(code).trim();
   return /^\d{4}$/.test(text)
-    ? diseaseCatalog.find((entry) => entry.diseaseCode === text) || null
+    ? diseaseCatalog.find((entry) => entry.diseaseCode === text) ||
+      stageOneIdentifiers.find((entry) => entry.diseaseCode === text) || null
     : null;
 }
 export function diseaseIdentifier(id) {

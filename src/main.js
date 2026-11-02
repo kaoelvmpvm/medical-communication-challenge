@@ -19,7 +19,6 @@ import {
   submitAnswer,
 } from "./game/engine.js";
 import { createPatientRounds } from "./game/random-round.js";
-import { readCode } from "./game/codes.js";
 import { doctor, patient, candidateCards } from "./ui/screens.js";
 import {
   portal,
@@ -169,35 +168,31 @@ function render({ focus = true } = {}) {
   if (focus) focusHeading();
 }
 function pauseRandomCase() {
-  try {
-    createPatientRounds(sessionStorage).pause();
-  } catch {
-    /* Never block other roles or change a retained case on failure. */
+  for (const stage of [1, 2, 3]) {
+    try {
+      createPatientRounds(sessionStorage, null, stage).pause();
+    } catch {
+      // Do not alter the current screen if a saved stage is damaged.
+    }
   }
 }
 function loadStudent(data) {
   const stage = Number(data.get("stage"));
-  let next;
-  try {
-    if (role === "patient" && stage !== 1) {
-      const decoded = readCode(data.get("code"));
-      if (decoded.stage !== stage)
-        throw new Error("病例碼與所選階段不一致，請向教師確認。");
-      if (!cases[decoded.caseIndex])
-        throw new Error("這份載入碼對應的完整病例內容尚未提供，尚未載入。");
-      next = createIndependentSession(role, stage, decoded.round, decoded.caseIndex);
-    } else if (role === "doctor")
-      next = createIndependentSession(role, stage, 1);
-  } catch (error) {
-    document.querySelector("#student-error").textContent = error.message;
+  if (![1, 2, 3].includes(stage)) {
+    document.querySelector("#student-error").textContent = "請選擇練習階段。";
     return;
   }
   const apply = () => {
     try {
-      if (role === "patient" && stage === 1) {
-        const loaded = createPatientRounds(sessionStorage).next();
-        next = createIndependentSession("patient", 1, loaded.round, loaded.caseIndex);
-      } else pauseRandomCase();
+      // All three stages draw a patient locally; no teacher-supplied load code.
+      // Draw and persist BEFORE replacing an existing patient session.
+      const next = role === "patient"
+        ? (() => {
+            const loaded = createPatientRounds(sessionStorage, null, stage).next();
+            return createIndependentSession("patient", stage, loaded.round, loaded.caseIndex);
+          })()
+        : createIndependentSession("doctor", stage, 1);
+      if (role === "doctor") pauseRandomCase();
       preferredStage = stage;
       session = next;
       view = "student";
@@ -270,7 +265,7 @@ app.addEventListener("click", (event) => {
     );
     if (role === "patient") {
       main.querySelector("#patient-loading").innerHTML = patientLoading(stage);
-      main.querySelector("#student-start").textContent = stage === 1 ? "開始回合" : "載入病例";
+      main.querySelector("#student-start").textContent = "開始回合";
     }
     main.querySelector("#student-error").textContent = "";
     return;
@@ -322,22 +317,14 @@ app.addEventListener("click", (event) => {
     return;
   }
   if (action === "next-patient" && session.role === "patient") {
-    if (session.stage === 1) {
-      try {
-        const loaded = createPatientRounds(sessionStorage).next();
-        session = createIndependentSession("patient", 1, loaded.round, loaded.caseIndex);
-        render();
-        announce("已隨機載入下一位病患。");
-      } catch (error) {
-        modal(`<h2 id="dialog-title">無法切換病患</h2><p>${e(error.message || "病例抽取失敗，原病例仍保留。")}</p><div class="dialog-actions">${b("返回", "cancel", { kind: "primary" })}</div>`);
-      }
-    } else {
-      preferredStage = session.stage;
-      session = null;
-      role = "patient";
-      view = "setup";
+    try {
+      const stage = session.stage;
+      const loaded = createPatientRounds(sessionStorage, null, stage).next();
+      session = createIndependentSession("patient", stage, loaded.round, loaded.caseIndex);
       render();
-      announce("請下一位病患輸入自己的病例碼。");
+      announce("已隨機載入下一位病患。");
+    } catch (error) {
+      modal(`<h2 id="dialog-title">無法切換病患</h2><p>${e(error.message || "病例抽取失敗，原病例仍保留。")}</p><div class="dialog-actions">${b("返回", "cancel", { kind: "primary" })}</div>`);
     }
     return;
   }
@@ -519,26 +506,23 @@ window.addEventListener("storage", (event) => {
   }
 });
 try {
+  const savedStage = Number(history.state?.stage);
   if (
     history.state?.view === "student" &&
     history.state?.role === "patient" &&
-    history.state?.stage === 1
+    [1, 2, 3].includes(savedStage)
   ) {
-    const saved = createPatientRounds(sessionStorage).resume();
+    const saved = createPatientRounds(sessionStorage, null, savedStage).resume();
     if (saved) {
-      session = createIndependentSession(
-        "patient",
-        1,
-        saved.round,
-        saved.caseIndex,
-      );
+      session = createIndependentSession("patient", savedStage, saved.round, saved.caseIndex);
       role = "patient";
       view = "student";
     }
   }
 } catch {
-  /* Keep the neutral portal; start() reports damaged/unavailable storage without redrawing. */
+  // A damaged saved round is never overwritten automatically.
 }
+
 app.addEventListener(
   "error",
   (event) => {

@@ -15,7 +15,8 @@ import {
 import { doctor, patient, stageTwoQuestionGroups } from "../src/ui/screens.js";
 import { questions } from "../src/data/questions.js";
 import { patientView } from "../src/data/cases.js";
-import { studentStatus, patientLoading } from "../src/ui/portal.js";
+import { studentStatus, patientLoading, setup } from "../src/ui/portal.js";
+import { stageOneIdentifier } from "../src/data/disease-catalog.js";
 function memory() {
   const values = new Map();
   return {
@@ -132,8 +133,11 @@ test("V1.6 first-stage doctor renders eight candidates, twenty continuous record
   assert.equal(manualGuess(s, "cold"), false);
   assert.equal(s.questionCount, 0);
   assert.ok(!patientLoading(1).includes("<input"));
-  assert.ok(patientLoading(2).includes('name="code"'));
-  assert.ok(patientLoading(3).includes('name="code"'));
+  for (const stage of [1, 2, 3]) {
+    assert.ok(!patientLoading(stage).includes("<input"));
+    assert.ok(!setup("patient", { stage }).includes("教師提供的病例碼"));
+    assert.ok(!setup("patient", { stage }).includes('name="code"'));
+  }
   const stage2 = createIndependentSession("doctor", 2, 1);
   assert.equal(manualGuess(stage2, "cold"), true);
   assert.ok(studentStatus(stage2, 6).includes("data-question-count"));
@@ -182,13 +186,18 @@ test("second-stage doctor embeds every question once beneath the appropriate sym
   assert.ok(!html.includes("猜測疾病"));
 });
 
-test("patient game screen no longer reveals four-digit disease code", () => {
-  const s = createIndependentSession("patient", 2, 1, 6);
-  const html = patient(s, patientView(cases[6]), []);
-  assert.ok(!html.includes("疾病代碼"));
-  assert.ok(!html.includes("disease-code"));
-  assert.ok(!html.includes(cases[6].diseaseCode));
-  assert.ok(html.includes("僅供病患閱讀"));
+test("patient screen retains the four-digit teaching code for all three stages", () => {
+  for (const stage of [1, 2, 3]) {
+    const entry = stage === 1 ? stageOneCases[2] : cases[6];
+    const ss = createIndependentSession("patient", stage, 1, stage === 1 ? 2 : 6);
+    const html = patient(ss, patientView(entry), []);
+    assert.match(entry.diseaseCode, /^[0-9]{4}$/);
+    assert.ok(html.includes("疾病代碼"));
+    assert.ok(html.includes('class="disease-code"'));
+    assert.ok(html.includes(entry.diseaseCode));
+    assert.ok(!html.includes(`<h2>${entry.disease}</h2>`));
+  }
+  assert.equal(stageOneIdentifier("covid").diseaseCode, stageOneCases[2].diseaseCode);
 });
 
 test("V1.6 stage one has distinct eight-case yes/no scenarios, with no one- or two-question shortcuts", () => {
@@ -211,4 +220,24 @@ test("V1.6 stage one has distinct eight-case yes/no scenarios, with no one- or t
   const key3 = ["belly", "fever", "sudden"];
   const signatures = stageOneCases.map(entry => key3.map(id => Number(entry.evidence[id])).join(""));
   assert.equal(new Set(signatures).size, 8);
+});
+
+test("stages two and three draw from twelve cases without any entry code and retain their own rounds", () => {
+  const storage = memory();
+  for (const stage of [2, 3]) {
+    assert.equal(drawCaseIndex(() => 11, stage), 11);
+    assert.equal(drawCaseIndex(() => 0, stage), 0);
+    let count = 0;
+    const pool = createPatientRounds(storage, () => count++, stage);
+    const first = pool.next();
+    const second = pool.next();
+    assert.deepEqual(first, { round: 1, caseIndex: 0 });
+    assert.deepEqual(second, { round: 2, caseIndex: 1 });
+    assert.deepEqual(pool.resume(), second);
+    assert.deepEqual(createPatientRounds(storage, () => { throw Error("redraw"); }, stage).resume(), second);
+    assert.equal(count, 2);
+  }
+  assert.equal(createPatientRounds(storage).resume(), null);
+  assert.ok(storage.getItem(`${PATIENT_ROUNDS_KEY}-stage-2`));
+  assert.ok(storage.getItem(`${PATIENT_ROUNDS_KEY}-stage-3`));
 });
