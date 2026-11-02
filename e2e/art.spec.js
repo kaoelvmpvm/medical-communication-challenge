@@ -81,9 +81,9 @@ test("supplied logo, hero and three role cards load with compact layout, keyboar
   for (const text of removed)
     await expect(page.locator("body")).not.toContainText(text);
   await expect(page.locator(".app-footer")).toHaveText(
-    "版本 V1.5板橋國中 高勳頊老師設計開發",
+    "版本 V1.6板橋國中 高勳頊老師設計開發",
   );
-  await expect(page.locator(".app-header")).not.toContainText("1.5");
+  await expect(page.locator(".app-header")).not.toContainText("1.6");
   await expect(page.locator(".sound-toggle")).toHaveCount(0);
   await expect(page.locator(".music-toggle")).toHaveCount(1);
   await expect(page.locator(".app-header")).not.toContainText("角色入口");
