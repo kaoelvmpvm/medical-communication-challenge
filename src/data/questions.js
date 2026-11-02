@@ -151,6 +151,13 @@ export function answerOptions(entry, question) {
     : "這方面我還沒留意，現在不能確定有沒有，我可以再觀察一下。";
   if (insufficient && hasSource && !detail.includes("不確定"))
     detail += " 其他沒有注意到的部分，我還不確定。";
+  // In the unasked ear domain of the conjunctivitis case, do not turn a
+  // missing observation into a definite negative.
+  if (entry.id === "viral_conjunctivitis" && question.id === "ears")
+    detail = "耳朵有沒有疼痛或聽聲音悶悶的，我目前沒有注意到，所以還不確定。";
+  if (detail.length < 23)
+    detail = detail.replace(/。$/u, "") +
+      "；其他沒有留意到的部分，我現在還不確定。";
 
   // Partial disclosure: it answers *some* of the question but leaves out
   // the differentiating details, unlike a one-word obviously-wrong choice.
