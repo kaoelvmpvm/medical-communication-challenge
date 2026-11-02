@@ -5,6 +5,7 @@ import { playUiSound } from "./ui/sound.js";
 import { isMusicEnabled, setMusicEnabled, activateMusicOnGesture, getMusicVolume, setMusicVolume } from "./ui/music.js";
 import { displayVersion } from "./data/version.js";
 import { cases, patientView } from "./data/cases.js";
+import { stageOneCases, stageOneSymptoms } from "./data/stage-one.js";
 import { symptoms } from "./data/symptoms.js";
 import { questions, questionsForCase } from "./data/questions.js";
 import {
@@ -127,13 +128,14 @@ function render({ focus = true } = {}) {
   else if (view === "login") main.innerHTML = login();
   else if (view === "setup") main.innerHTML = setup(role, session || { stage: preferredStage });
   else if (view === "student" && session) {
-    const matching = matches(session.records);
+    const pool = session.stage === 1 ? stageOneCases : cases;
+    const matching = matches(session.records, pool);
     statusHost.innerHTML = studentStatus(session, matching.length);
     if (session.role === "doctor") {
       main.innerHTML =
         doctor(
           session,
-          cases.map((entry) => ({
+          pool.map((entry) => ({
             id: entry.id,
             disease: entry.disease,
             comparison: comparison(entry.evidence, session.records),
@@ -150,8 +152,8 @@ function render({ focus = true } = {}) {
         patient(
           session,
           {
-            ...patientView(cases[session.caseIndex]),
-            artUrl: caseArtUrl(cases[session.caseIndex].id),
+            ...patientView(pool[session.caseIndex]),
+            artUrl: caseArtUrl(pool[session.caseIndex].id),
           },
           session.stage === 2 ? optionsFor(session) : [],
         ) + `<div class="patient-next-action">${b("下一位病患", "next-patient", { kind: "primary" })}</div>`;
@@ -225,9 +227,11 @@ function updateRecords(id) {
   card
     .querySelector('[data-value="false"]')
     .setAttribute("aria-pressed", String(value === false));
-  const matching = matches(session.records);
+  const pool = session.stage === 1 ? stageOneCases : cases;
+  const activeSymptoms = session.stage === 1 ? stageOneSymptoms : symptoms;
+  const matching = matches(session.records, pool);
   main.querySelector("[data-candidates]").innerHTML = candidateCards(
-    cases.map((entry) => ({
+    pool.map((entry) => ({
       id: entry.id,
       disease: entry.disease,
       comparison: comparison(entry.evidence, session.records),
@@ -235,11 +239,11 @@ function updateRecords(id) {
     matching,
   );
   main.querySelector("[data-match-summary]").textContent =
-    `${matching.length} / ${cases.length} 個未衝突`;
+    `${matching.length} / ${pool.length} 個未衝突`;
   statusHost.querySelector("[data-match-count]").textContent = matching.length;
   const progress = main.querySelector("[data-record-progress]");
   if (progress)
-    progress.textContent = `${Object.keys(session.records).length} / ${symptoms.length} 已確認`;
+    progress.textContent = `${Object.keys(session.records).length} / ${activeSymptoms.length} 已確認`;
   announce(`紀錄已更新，${matching.length} 個模擬案例符合目前線索。`);
 }
 

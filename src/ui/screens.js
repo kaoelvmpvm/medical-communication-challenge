@@ -1,6 +1,7 @@
 import { pictogram } from "./pictograms.js";
 import { diseaseCatalog } from "../data/disease-catalog.js";
 import { symptoms, systems } from "../data/symptoms.js";
+import { stageOneSymptoms } from "../data/stage-one.js";
 import { questions } from "../data/questions.js";
 import { caseArt } from "./case-art.js";
 import { bodyMap } from "./body-map.js";
@@ -46,7 +47,7 @@ function symptomCard(symptom, value, level = 4) {
 }
 
 function candidatePanel(diseases, matching) {
-  return `<section class="candidates-panel panel" aria-labelledby="candidate-title"><details class="candidate-details" open><summary><span><span class="eyebrow">只比對模擬情境</span><span id="candidate-title" class="summary-title">可能疾病 <span class="count-badge" data-match-summary>${matching.length} / ${diseases.length} 個未衝突</span></span></span><span class="collapse-label">展開／收合 <span aria-hidden="true">⌄</span></span></summary><div class="candidate-grid" data-candidates>${candidateCards(diseases, matching)}</div></details><p class="candidate-disclaimer">只比對已設定的教材線索；資料不足或不適用不參與排除。未衝突不代表確診，也不能用來排除真實疾病。</p></section>`;
+  return `<section class="candidates-panel panel" aria-labelledby="candidate-title"><details class="candidate-details" open><summary><span><span id="candidate-title" class="summary-title">可能疾病 <span class="count-badge" data-match-summary>${matching.length} / ${diseases.length} 個未衝突</span></span></span><span class="collapse-label">展開／收合 <span aria-hidden="true">⌄</span></span></summary><div class="candidate-grid" data-candidates>${candidateCards(diseases, matching)}</div></details></section>`;
 }
 
 // Each second-stage oral question belongs to the symptom group in which it is displayed.
@@ -74,13 +75,13 @@ function inlineQuestions(systemId, s) {
 
 export function doctor(s, diseases, matching) {
   if (s.stage === 1)
-    return `${candidatePanel(diseases, matching)}<section class="panel record-panel phase-one-record" aria-labelledby="screen-title"><div class="section-heading"><h1 id="screen-title" tabindex="-1">症狀紀錄</h1></div><p class="section-intro">依病人的口頭回答，選擇「有」或「沒有」；需要修改時可直接切換或清除。</p><div class="symptom-grid phase-one-grid">${symptoms.map((symptom) => symptomCard(symptom, s.records[symptom.id], 2)).join("")}</div></section>`;
+    return `${candidatePanel(diseases, matching)}<section class="panel record-panel phase-one-record" aria-labelledby="screen-title"><div class="section-heading"><h1 id="screen-title" tabindex="-1">第一階段・症狀紀錄</h1></div><p class="section-intro">依病人的口頭回答，選擇「有」或「沒有」；需要修改時可直接切換或清除。</p><div class="symptom-grid phase-one-grid">${stageOneSymptoms.map((symptom) => symptomCard(symptom, s.records[symptom.id], 2)).join("")}</div></section>`;
 
   if (s.stage === 3)
-    return `<section class="panel practice-panel"><span class="eyebrow">先聽完整，再確認理解</span><h1 tabindex="-1" id="screen-title">把理解，說給對方聽。</h1><p class="lead">請病患先完整描述，不急著猜疾病。你可以先傾聽，再用自己的話回述。</p><ol class="practice-steps"><li><strong>聽位置與感覺</strong><p>對方說了哪些身體感受？不要自行加入沒聽到的資訊。</p></li><li><strong>回述重點</strong><p>「我聽到你說……，我理解得對嗎？」</p></li><li><strong>邀請補充</strong><p>「還有什麼讓你擔心，或想再補充的？」</p></li></ol>${notice("這個階段重點是完整描述與確認理解，不進行疾病猜測或競賽計分。")}${s.independent ? `<section class="followup-panel"><h2>補充詢問</h2><p>選一句念給病人聽，或在下方整理自己的補充問題。不計分。</p>${["可以再說明不舒服的位置嗎？", "這種感覺怎麼影響你的日常生活？", "你最擔心的是哪一件事？"].map((text) => b(text, "followup", { extra: `data-text="${text}"` })).join("")}<label>我的補充問題<textarea id="followup-notes" rows="3" maxlength="2000" placeholder="例如：這種感覺持續多久？">${e(s.followupNotes || "")}</textarea></label><p class="followup-status" role="status">${e(s.lastFollowup || "")}</p></section>` : b("完成這位病患的練習", "practice-next", { kind: "primary" })}</section>`;
+    return `<section class="panel practice-panel"><span class="eyebrow">先聽完整，再確認理解</span><h1 tabindex="-1" id="screen-title">聽懂病情，再補問清楚</h1><p class="lead">先聽病人完整說明，再確認不舒服的位置、感覺、時間與生活影響。</p><ol class="practice-steps"><li><strong>整理四個重點</strong><p>哪裡不舒服、什麼感覺、持續多久、如何影響生活？</p></li><li><strong>確認自己的理解</strong><p>「我聽到你說……，這樣理解對嗎？」</p></li><li><strong>補問尚不清楚的地方</strong><p>「還有什麼沒說清楚，或是你最擔心的事？」</p></li></ol>${notice("這個階段重點是完整描述與確認理解，不進行疾病猜測或競賽計分。")}${s.independent ? `<section class="followup-panel"><h2>補充詢問</h2><p>選一句念給病人聽，或在下方整理自己的補充問題。不計分。</p>${["可以再說明不舒服的位置嗎？", "這種感覺怎麼影響你的日常生活？", "你最擔心的是哪一件事？"].map((text) => b(text, "followup", { extra: `data-text="${text}"` })).join("")}<label>我的補充問題<textarea id="followup-notes" rows="3" maxlength="2000" placeholder="例如：這種感覺持續多久？">${e(s.followupNotes || "")}</textarea></label><p class="followup-status" role="status">${e(s.lastFollowup || "")}</p></section>` : b("完成這位病患的練習", "practice-next", { kind: "primary" })}</section>`;
   return `${candidatePanel(diseases, matching)}
     <section class="panel record-panel stage-two-record" aria-labelledby="screen-title">
-      <div class="section-heading"><div><span class="eyebrow">第二階段・問診與推理</span><h1 id="screen-title" tabindex="-1">問診與症狀紀錄</h1></div>
+      <div class="section-heading"><div><span class="eyebrow">第二階段・問診與推理</span><h1 id="screen-title" tabindex="-1">選問題・記線索</h1></div>
       <span class="subtle-badge" data-record-progress>${Object.keys(s.records).length} / ${symptoms.length} 已確認</span></div>
       <p class="section-intro">選擇問題並詢問病人，再把聽到的症狀記錄下來。</p>
       ${systems.map((system) => `<section class="symptom-group" id="group-${system.id}" aria-labelledby="heading-${system.id}">

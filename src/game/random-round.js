@@ -1,6 +1,6 @@
-import { cases } from "../data/cases.js";
+import { stageOneCases } from "../data/stage-one.js";
 
-export const PATIENT_ROUNDS_KEY = "medical-challenge-stage-one-patient-v1";
+export const PATIENT_ROUNDS_KEY = "medical-challenge-stage-one-patient-v16";
 const validRound = (round) =>
   Number.isInteger(round) && round >= 1 && round <= 5;
 
@@ -8,7 +8,7 @@ const validRound = (round) =>
 export function drawCaseIndex(
   randomUint32 = () => crypto.getRandomValues(new Uint32Array(1))[0],
 ) {
-  const size = cases.length;
+  const size = stageOneCases.length;
   const limit = Math.floor(2 ** 32 / size) * size;
   let value;
   do {
@@ -23,7 +23,7 @@ export function drawCaseIndex(
 export function createPatientRounds(storage, draw = drawCaseIndex) {
   function read() {
     const raw = storage.getItem(PATIENT_ROUNDS_KEY);
-    if (raw === null) return { version: 1, rounds: {}, activeRound: null };
+    if (raw === null) return { version: 2, rounds: {}, activeRound: null };
     let book;
     try {
       book = JSON.parse(raw);
@@ -33,7 +33,7 @@ export function createPatientRounds(storage, draw = drawCaseIndex) {
       );
     }
     if (
-      book?.version !== 1 ||
+      book?.version !== 2 ||
       !book.rounds ||
       typeof book.rounds !== "object" ||
       Array.isArray(book.rounds) ||
@@ -46,14 +46,14 @@ export function createPatientRounds(storage, draw = drawCaseIndex) {
         !/^[1-5]$/.test(key) ||
         !Number.isInteger(index) ||
         index < 0 ||
-        index >= cases.length
+        index >= stageOneCases.length
       )
         throw new Error("回合病例資料無效，沒有重新抽取病例。");
       rounds[key] = index;
     }
     if (book.activeRound !== null && rounds[book.activeRound] === undefined)
       throw new Error("找不到保留的回合，沒有重新抽取病例。");
-    return { version: 1, rounds, activeRound: book.activeRound };
+    return { version: 2, rounds, activeRound: book.activeRound };
   }
   function save(book) {
     try {
@@ -70,10 +70,10 @@ export function createPatientRounds(storage, draw = drawCaseIndex) {
       const previous = book.activeRound === null ? null : book.rounds[book.activeRound];
       const round = book.activeRound === null ? 1 : book.activeRound % 5 + 1;
       let index = draw();
-      if (!Number.isInteger(index) || index < 0 || index >= cases.length)
+      if (!Number.isInteger(index) || index < 0 || index >= stageOneCases.length)
         throw new Error("病例抽取失敗，沒有更換病患。");
-      if (cases.length > 1 && index === previous)
-        index = (index + 1) % cases.length;
+      if (stageOneCases.length > 1 && index === previous)
+        index = (index + 1) % stageOneCases.length;
       book.rounds[round] = index;
       book.activeRound = round;
       save(book);
@@ -84,7 +84,7 @@ export function createPatientRounds(storage, draw = drawCaseIndex) {
       const book = read();
       if (book.rounds[round] === undefined) {
         const index = draw();
-        if (!Number.isInteger(index) || index < 0 || index >= cases.length)
+        if (!Number.isInteger(index) || index < 0 || index >= stageOneCases.length)
           throw new Error("病例抽取失敗，尚未開始回合。");
         book.rounds[round] = index;
       }

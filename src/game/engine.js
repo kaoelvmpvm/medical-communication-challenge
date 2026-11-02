@@ -1,4 +1,5 @@
 import { cases, patientView } from "../data/cases.js";
+import { stageOneCases, stageOneSymptoms } from "../data/stage-one.js";
 import { symptoms } from "../data/symptoms.js";
 import {
   questions,
@@ -46,8 +47,8 @@ export function comparison(evidence, records) {
   return fullyChecked ? "consistent" : "insufficient";
 }
 
-export function matches(records) {
-  return cases
+export function matches(records, pool = cases) {
+  return pool
     .filter((entry) => comparison(entry.evidence, records) !== "conflict")
     .map((entry) => entry.id);
 }
@@ -60,7 +61,7 @@ export function mark(session, id, value) {
   )
     return false;
   if (
-    !symptoms.some((symptom) => symptom.id === id) ||
+    !(session.independent && session.stage === 1 ? stageOneSymptoms : symptoms).some((symptom) => symptom.id === id) ||
     ![true, false, null].includes(value)
   )
     return false;
@@ -213,7 +214,7 @@ export function createIndependentSession(role, stage, round, caseIndex = null) {
     throw new Error("角色或回合無效");
   if (
     role === "patient" &&
-    (!Number.isInteger(caseIndex) || caseIndex < 0 || caseIndex >= cases.length)
+    (!Number.isInteger(caseIndex) || caseIndex < 0 || caseIndex >= (stage === 1 ? stageOneCases.length : cases.length))
   )
     throw new Error("請先載入有效病例碼");
   return {

@@ -59,8 +59,26 @@ const diseases = {
   tension_headache: "bilateralPressure",
   dysmenorrhea: "periodCramps",
   otitis_media: "earPain",
+  covid: "cough",
+  bacterial_gastro: "belly",
+  functional_dyspepsia: "nausea",
+};
+const firstStageAliases = {
+  well: "fatigue",
+  daily: "fatigue",
+  blocked: "runny",
+  nasalThroat: "throat",
+  belly: "belly",
+  chills: "fever",
+  sudden: "aches",
+  stop: "fatigue",
+  repeated: "aches",
+  rapid: "aches",
+  threeDays: "fatigue",
+  sleep: "fatigue",
+  recurring: "aches",
 };
 export function pictogram(id) {
-  const path = paths[id] || paths[diseases[id]] || paths.headache;
+  const path = paths[id] || paths[firstStageAliases[id]] || paths[diseases[id]] || paths.headache;
   return `<svg class="pictogram" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
 }

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cases } from "../src/data/cases.js";
+import { stageOneCases, stageOneSymptoms } from "../src/data/stage-one.js";
 import {
   drawCaseIndex,
   createPatientRounds,
@@ -22,19 +23,14 @@ function memory() {
     setItem: (key, value) => values.set(key, value),
   };
 }
-test("unbiased rejection sampling covers all twelve cases with equal accepted buckets", () => {
+test("first-stage random drawing is uniform across exactly eight cases", () => {
+  assert.equal(stageOneCases.length, 8);
   assert.equal(cases.length, 12);
-  const counts = Array(cases.length).fill(0);
-  for (let value = 0; value < 600; value++)
+  const counts = Array(stageOneCases.length).fill(0);
+  for (let value = 0; value < 800; value++)
     counts[drawCaseIndex(() => value)]++;
-  assert.deepEqual(counts, Array(cases.length).fill(600 / cases.length));
-  const sequence = [4294967295, 4294967294, 4294967293, 4294967292, 5];
-  let calls = 0;
-  assert.equal(
-    drawCaseIndex(() => sequence[calls++]),
-    5,
-  );
-  assert.equal(calls, 5);
+  assert.deepEqual(counts, Array(stageOneCases.length).fill(100));
+  assert.equal(drawCaseIndex(() => 5), 5);
   assert.throws(() => drawCaseIndex(() => -1));
   assert.throws(() => drawCaseIndex(() => 2 ** 32));
 });
@@ -79,8 +75,8 @@ test("all five rounds are retained independently with no teacher records written
 test("damaged state is never discarded or randomly replaced", () => {
   for (const raw of [
     "bad json",
-    JSON.stringify({ version: 2, rounds: {}, activeRound: null }),
-    JSON.stringify({ version: 1, rounds: { 1: cases.length }, activeRound: 1 }),
+    JSON.stringify({ version: 3, rounds: {}, activeRound: null }),
+    JSON.stringify({ version: 2, rounds: { 1: stageOneCases.length }, activeRound: 1 }),
     JSON.stringify({ version: 1, rounds: {}, activeRound: 1 }),
   ]) {
     const storage = memory();
@@ -108,15 +104,16 @@ test("failed persistence exposes no unsaved case and preserves an already loaded
   assert.equal(storage.getItem(PATIENT_ROUNDS_KEY), before);
   assert.deepEqual(rounds.resume(), { round: 1, caseIndex: 3 });
 });
-test("stage-one doctor renders twenty-eight continuous records, no categories, progress, guessing or counting", () => {
+test("V1.6 first-stage doctor renders eight candidates, twenty continuous records, and no guessing controls", () => {
   const s = createIndependentSession("doctor", 1, 1);
   const html = doctor(
     s,
-    cases.map(({ id, disease }) => ({ id, disease })),
-    cases.map((item) => item.id),
+    stageOneCases.map(({ id, disease }) => ({ id, disease })),
+    stageOneCases.map((item) => item.id),
   );
-  assert.equal((html.match(/data-symptom-card=/g) || []).length, 28);
-  assert.equal((html.match(/data-candidate=/g) || []).length, 12);
+  assert.equal((html.match(/data-symptom-card=/g) || []).length, 20);
+  assert.equal((html.match(/data-candidate=/g) || []).length, 8);
+  for (const item of stageOneSymptoms) assert.ok(html.includes(item.name), item.name);
   for (const forbidden of [
     "oral-panel",
     "decision-panel",
@@ -192,4 +189,26 @@ test("patient game screen no longer reveals four-digit disease code", () => {
   assert.ok(!html.includes("disease-code"));
   assert.ok(!html.includes(cases[6].diseaseCode));
   assert.ok(html.includes("僅供病患閱讀"));
+});
+
+test("V1.6 stage one has distinct eight-case yes/no scenarios, with no one- or two-question shortcuts", () => {
+  assert.equal(stageOneSymptoms.length, 20);
+  assert.equal(stageOneCases.length, 8);
+  const keys = stageOneSymptoms.map(s => s.id);
+  for (const entry of stageOneCases) {
+    assert.deepEqual(Object.keys(entry.evidence), keys);
+    assert.ok(Object.values(entry.evidence).every(v => typeof v === "boolean"));
+    assert.equal(entry.notes.length, 6);
+    assert.ok(entry.notes.every(note => note.text.length > 12));
+  }
+  for (let i=0;i<keys.length;i++)
+    for (let j=i+1;j<keys.length;j++)
+      for (const entry of stageOneCases) {
+        const survivors = stageOneCases.filter(other => other.evidence[keys[i]] === entry.evidence[keys[i]]
+          && other.evidence[keys[j]] === entry.evidence[keys[j]]);
+        assert.ok(survivors.length >= 2, `${entry.id}: ${keys[i]}, ${keys[j]}`);
+      }
+  const key3 = ["belly", "fever", "sudden"];
+  const signatures = stageOneCases.map(entry => key3.map(id => Number(entry.evidence[id])).join(""));
+  assert.equal(new Set(signatures).size, 8);
 });

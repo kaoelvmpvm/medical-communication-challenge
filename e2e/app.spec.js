@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { makeCode } from "../src/game/codes.js";
 import { cases } from "../src/data/cases.js";
 import { symptoms } from "../src/data/symptoms.js";
+import { stageOneCases, stageOneSymptoms } from "../src/data/stage-one.js";
 import { STORAGE_KEY } from "../src/teacher/store.js";
 const root = "http://127.0.0.1:4173/medical-communication-challenge/";
 async function login(page) {
@@ -324,12 +325,12 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
   }
   await startStudent(page, "doctor");
   await expect(page.locator(".question-panel")).toHaveCount(0);
-  await expect(page.locator(".symptom-card")).toHaveCount(symptoms.length);
+  await expect(page.locator(".symptom-card")).toHaveCount(stageOneSymptoms.length);
   if (
     !((await page.locator(".candidate-details").getAttribute("open")) !== null)
   )
     await page.locator(".candidate-details summary").click();
-  for (const symptom of symptoms) {
+  for (const symptom of stageOneSymptoms) {
     const card = page.locator(`[data-symptom-card="${symptom.id}"]`);
     for (const value of [true, false]) {
       const button = card.locator(`[data-value="${value}"]`);
@@ -337,7 +338,7 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
       else await button.click({ clickCount: 2 });
       await expect(card).toHaveAttribute("data-state", value ? "yes" : "no");
       await expect(page.locator(".candidate:not(.inconsistent)")).toHaveCount(
-        cases.filter(
+        stageOneCases.filter(
           (entry) =>
             typeof entry.evidence[symptom.id] !== "boolean" ||
             entry.evidence[symptom.id] === value,
@@ -353,11 +354,11 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
     ),
   ).toHaveCount(0);
   await expect(page.locator(".phase-one-grid > .symptom-card")).toHaveCount(
-    symptoms.length,
+    stageOneSymptoms.length,
   );
   await page.getByRole("button", { name: "一鍵清空" }).click();
   await expect(page.locator('.symptom-card[data-state="unknown"]')).toHaveCount(
-    symptoms.length,
+    stageOneSymptoms.length,
   );
   await layout(page);
   if (
@@ -365,7 +366,7 @@ test("twelve source patient maps and doctor twenty-eight-state filtering with ma
   ) {
     await expect(page.locator(".candidate").first()).toBeHidden();
     await page.locator(".candidate-details summary").click();
-    await expect(page.locator(".candidate")).toHaveCount(cases.length);
+    await expect(page.locator(".candidate")).toHaveCount(stageOneCases.length);
     await layout(page);
   }
   await axe(page);
@@ -514,15 +515,15 @@ test("stage-one random cases persist on refresh; next patient draws and round se
   });
   await startStudent(page, "patient", 1);
   await expect(page.locator('[name="round"],[name="code"]')).toHaveCount(0);
-  await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(cases[4].notes[0].text);
+  await expect(page.locator(`#${stageOneCases[4].notes[0].id}`)).toContainText(stageOneCases[4].notes[0].text);
   await expect(page.locator(".disease-code")).toHaveCount(0);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
   await page.reload();
-  await expect(page.locator(`#${cases[4].notes[0].id}`)).toContainText(cases[4].notes[0].text);
+  await expect(page.locator(`#${stageOneCases[4].notes[0].id}`)).toContainText(stageOneCases[4].notes[0].text);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(0);
   await page.evaluate(() => { window.__nextCase = 2; });
   await page.getByRole("button", { name: "下一位病患" }).click();
-  await expect(page.locator(`#${cases[2].notes[0].id}`)).toContainText(cases[2].notes[0].text);
+  await expect(page.locator(`#${stageOneCases[2].notes[0].id}`)).toContainText(stageOneCases[2].notes[0].text);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
   await page.reload();
   await expect(page.locator(".disease-code")).toHaveCount(0);
@@ -650,7 +651,7 @@ test("new cases answer source-based questions, preserve unknown facts and condit
   await expect(page.locator(".answer-analysis")).toContainText(
     "清楚說明資料不足",
   );
-  await startStudent(page, "doctor", 1, 1);
+  await startStudent(page, "doctor", 2, 1);
   if ((await page.locator(".candidate-details").getAttribute("open")) === null)
     await page.locator(".candidate-details summary").click();
   await page.locator('[data-id="redEye"][data-value="true"]').click();
@@ -666,7 +667,7 @@ test("new cases answer source-based questions, preserve unknown facts and condit
     "insufficient",
   );
   await expect(page.locator('[data-candidate="cold"]')).toContainText(
-    "繼續調查",
+    "無法判斷",
   );
   await page.locator('[data-id="periodCramps"][data-value="true"]').click();
   await expect(
@@ -682,18 +683,18 @@ test("new cases answer source-based questions, preserve unknown facts and condit
 });
 
 test("conjunctivitis remains among candidates when reported fever, vomiting, diarrhea and belly pain are absent", async ({ page }) => {
-  await startStudent(page, "doctor", 1);
+  await startStudent(page, "doctor", 2);
   if ((await page.locator(".candidate-details").getAttribute("open")) === null)
     await page.locator(".candidate-details summary").click();
   for (const symptom of ["fever", "vomit", "diarrhea", "belly"])
     await page.locator(`[data-symptom-card="${symptom}"] [data-value="false"]`).click();
   await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
-    .toHaveAttribute("data-comparison", "consistent");
+    .toHaveAttribute("data-comparison", "insufficient");
   await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
     .toContainText("無法判斷");
   await page.locator('[data-symptom-card="redEye"] [data-value="true"]').click();
   await expect(page.locator('[data-candidate="viral_conjunctivitis"]'))
-    .toHaveAttribute("data-comparison", "consistent");
+    .toHaveAttribute("data-comparison", "insufficient");
   await expect(page.locator(".candidate-disclaimer")).toHaveCount(0);
 });
 
@@ -710,7 +711,7 @@ test("flu turns gray after fever=no, returns green when unresolved, and confirms
   await page.locator('[data-symptom-card="fever"] [data-value="true"]').click();
   await expect(flu).toHaveAttribute("data-comparison", "insufficient");
   await expect(flu).toHaveClass(/uncertain/);
-  const data = cases.find(c => c.id === "flu");
+  const data = stageOneCases.find(c => c.id === "flu");
   for (const [id, value] of Object.entries(data.evidence))
     if (typeof value === "boolean")
       await page.locator(`[data-symptom-card="${id}"] [data-value="${value}"]`).click();
