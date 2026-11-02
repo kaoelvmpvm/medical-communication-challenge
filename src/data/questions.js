@@ -119,72 +119,96 @@ const fallbackPhrases = {
   ],
   periodCramps: ["月經開始後下腹一陣一陣絞痛。", "沒有經期相關的腹部絞痛。"],
 };
+// Keep every candidate grounded in a fictional patient’s recorded facts. In
+// particular, missing information is not evidence that a symptom is absent.
+function shortClue(text, maxLength = 48) {
+  const parts = String(text).trim().match(/[^，。；！？]+[，。；！？]?/gu) || [];
+  let result = "";
+  for (const part of parts) {
+    if (result && result.length + part.length > maxLength) break;
+    result += part;
+  }
+  return (result || String(text)).trim().replace(/[，。；！？\s]+$/u, "");
+}
+
 export function answerOptions(entry, question) {
   if (!questionApplies(question, entry.id)) return [];
-  const related = entry.notes.filter((note) =>
-    question.parts.includes(note.part),
+  const related = entry.notes.filter((note) => question.parts.includes(note.part));
+  const known = question.symptoms.filter((id) =>
+    typeof entry.evidence[id] === "boolean",
   );
-  const known = question.symptoms.filter(
-    (id) => typeof entry.evidence[id] === "boolean",
+  const insufficient = question.symptoms.some((id) =>
+    entry.evidence[id] === "unknown",
   );
-  const insufficient = question.symptoms.some(
-    (id) => entry.evidence[id] === "unknown",
-  );
-  const hasSource =
-    related.length > 0 || known.length > 0 || !!entry.responses?.[question.id];
-  let detail =
-    entry.responses?.[question.id] ||
+  const hasSource = related.length > 0 || known.length > 0 ||
+    Boolean(entry.responses?.[question.id]);
+  const relevantFacts = entry.responses?.[question.id] ||
     (related.length
       ? related.map((note) => note.text).join(" ")
-      : known
-          .map((id) => fallbackPhrases[id][entry.evidence[id] ? 0 : 1])
-          .join(""));
-  if (!hasSource)
-    detail =
-      "這部分我還沒有注意到，情境也沒有提供，我還不確定，不能直接當作沒有。";
-  else if (insufficient && !detail.includes("不確定"))
-    detail += " 問題中沒有設定的其他細節，我還不確定。";
-  const detailed = {
-    id: "detail",
-    text: detail,
-    quality: "說得恰到好處",
-    analysis: hasSource
-      ? "具體且切合問題：使用情境已有的感受、位置、時間或變化；沒有設定的資訊，清楚說明不確定。"
-      : "具體且切合問題：情境沒有提供這方面的資訊，坦白說不確定，比憑空猜測更適當。",
-  };
-  // The overlong choice uses another *actual* case note, but avoids the asked
-  // anatomical region. No invented symptoms or diagnoses enter the scenario.
-  const tangent = entry.notes.find((note) => !question.parts.includes(note.part))?.text;
+      : known.map((id) => fallbackPhrases[id][entry.evidence[id] ? 0 : 1]).join(""));
+  let detail = hasSource
+    ? shortClue(relevantFacts, 100).replace(/([^。！？])$/u, "$1。")
+    : "這方面我還沒留意，現在不能確定有沒有，我可以再觀察一下。";
+  if (insufficient && hasSource && !detail.includes("不確定"))
+    detail += " 其他沒有注意到的部分，我還不確定。";
+
+  // Partial disclosure: it answers *some* of the question but leaves out
+  // the differentiating details, unlike a one-word obviously-wrong choice.
+  const briefSeed = hasSource
+    ? shortClue(relevantFacts, 24)
+    : "這方面我還沒特別注意";
+  const style = [...(entry.id + question.id)].reduce(
+    (sum, char) => sum + char.charCodeAt(0), 0,
+  ) % 3;
+  const briefEndings = [
+    "，其他的部分我沒有仔細想過。",
+    "，更詳細的感覺我一時說不清楚。",
+    "，其他細節我還沒特別留意。",
+  ];
+  const brief = `${briefSeed}${briefEndings[style]}`;
+
+  // Over-explaining: retains a real clue, then adds another *true* but
+  // question-irrelevant observation. It is plausible speech rather than a
+  // lengthy monologue about why the patient is describing their symptoms.
+  const tangent = entry.notes.find((note) =>
+    !question.parts.includes(note.part),
+  )?.text;
+  const relatedSeed = shortClue(
+    related[0]?.text || relevantFacts || "這個部分我沒有特別注意",
+    33,
+  );
+  const sideways = tangent ? shortClue(tangent, 43) :
+    "最近幾天我一直在注意身體哪裡不舒服";
   const longwinded = [
-    "嗯，這個問題讓我想到好多事情，我不知道要先從哪裡開始說。",
-    tangent ? `我先想到的是：${tangent}` : "我覺得自己可以先說很多其他事情。",
-    "而且每次有人問我身體的感覺，我都會想把各種事情一起講完，因為我覺得有好多東西值得提起。",
-    "我還會想到以前自己怎麼描述不舒服、別人通常怎麼問問題，想到很多方向。",
-    "所以我想先把這些念頭都說完，再想想你剛才究竟問的是什麼。",
-  ].join(" ");
+    `${relatedSeed}。另外，${sideways}，我也不確定是不是有關係。`,
+    `我比較記得${sideways}。至於你剛問的，${relatedSeed}，但不知道這些是不是一起發生的。`,
+    `${relatedSeed}。還有${sideways}，我不太確定該先說哪一個。`,
+  ][style];
   const options = [
     {
       id: "overlong",
       text: longwinded,
       quality: "說太多但沒用",
-      analysis: "雖然說了很多，卻沒有直接回答醫師當下的問題。請挑出相關的身體感受，減少離題內容。",
+      analysis: "這個說法有提到部分真實線索，但又帶入醫師沒有問的其他感受，重要資訊反而不容易找到。試著先回答這一題，再補充必要細節。",
     },
-    detailed,
+    {
+      id: "detail",
+      text: detail,
+      quality: "說得恰到好處",
+      analysis: hasSource
+        ? "回答直接對應醫師的問題，也說出具體可用的感受或變化；沒有注意到的細節應保留不確定，不必猜測。"
+        : "沒有留意的資訊，清楚說明尚不確定，並願意再觀察；比含糊帶過或自行推測更能幫助醫師了解狀況。",
+    },
     {
       id: "brief",
-      text: hasSource ? "就是有點不舒服。" : "不知道。",
+      text: brief,
       quality: "說得太少",
-      analysis: hasSource
-        ? "內容太少，醫師無法了解身體哪裡、怎麼不舒服，以及時間或變化；可補上已有的具體線索。"
-        : "資訊不足時應清楚說出「這個部分還沒注意到，情境沒有提供」，不要只用一句「不知道」帶過。",
+      analysis: "這不是完全沒回答，但只提到一小部分，醫師還不清楚症狀的特徵、位置或變化。再補一兩個與問題直接相關的細節會更有幫助。",
     },
   ];
-  // Shuffle the 3 positions deterministically for each case–question pair.
-  // Never mark the correct category before the student confirms an answer.
-  const offset =
-    [...(entry.id + question.id)].reduce(
-      (sum, char) => sum + char.charCodeAt(0),
-      0,
-    ) % options.length;
+  // Vary positions without varying facts or leaking the answer category.
+  const offset = [...(entry.id + question.id)].reduce(
+    (sum, char) => sum + char.charCodeAt(0), 0,
+  ) % options.length;
   return [...options.slice(offset), ...options.slice(0, offset)];
 }

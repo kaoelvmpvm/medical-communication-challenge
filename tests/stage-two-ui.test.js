@@ -59,7 +59,7 @@ test("second-stage patient has one question banner, three accessible paper cards
   assert.ok(!selectedHtml.includes("說得恰到好處"), "Feedback category remains hidden until submitted");
   session.submitted = true;
   assert.ok(patient(session, patientView(entry), options).includes("說得恰到好處"));
-  assert.ok(patient(session, patientView(entry), options).includes("具體且切合問題"));
+  assert.ok(patient(session, patientView(entry), options).includes("回答直接對應醫師的問題"));
 });
 
 test("each case/question gives three distinct consistent and appropriately described speaking styles", () => {
@@ -76,7 +76,14 @@ test("each case/question gives three distinct consistent and appropriately descr
     assert.equal(new Set(options.map(o => o.text)).size, 3);
     positions.add(options.findIndex(o => o.id === "detail"));
     const detailed = options.find(o => o.id === "detail");
-    assert.ok(detailed.text.length > options.find(o => o.id === "brief").text.length);
+    const lengths = options.map(o => [...o.text].length);
+    assert.ok(lengths.every(n => n >= 18 && n <= 125),
+      `${entry.id}/${q.id}: outside a natural speaking range: ${lengths.join(",")}`);
+    assert.ok(Math.max(...lengths) - Math.min(...lengths) <= 92,
+      `${entry.id}/${q.id}: length gap is too obvious: ${lengths.join(",")}`);
+    assert.ok(!options.some(o => o.text.includes("我不知道要先從哪裡開始說") ||
+      o.text.includes("我想先把這些念頭都說完")),
+      "Remove artificial long monologues");
     for (const o of options) assert.ok(o.analysis.length > 10);
   }
   assert.deepEqual(positions, new Set([0, 1, 2]));
