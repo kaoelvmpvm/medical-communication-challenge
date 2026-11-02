@@ -172,7 +172,10 @@ export function answerOptions(entry, question) {
     "，更詳細的感覺我一時說不清楚。",
     "，其他細節我還沒特別留意。",
   ];
-  const brief = `${briefSeed}${briefEndings[style]}`;
+  const firstDraft = `${briefSeed}${briefEndings[style]}`;
+  const brief = firstDraft.length < 25
+    ? `${briefSeed}，這是我現在比較記得的，其他細節還沒特別留意。`
+    : firstDraft;
 
   // Over-explaining: retains a real clue, then adds another *true* but
   // question-irrelevant observation. It is plausible speech rather than a
