@@ -124,7 +124,7 @@ test("supplied logo, hero and three role cards load with compact layout, keyboar
   );
 });
 
-test("all twelve patient illustrations decode from Pages subpaths, match case IDs and retain body map and identifier", async ({
+test("all twelve stage-two illustrations display in the center without a duplicated body-map panel", async ({
   page,
 }, info) => {
   const errors = [];
@@ -142,26 +142,20 @@ test("all twelve patient illustrations decode from Pages subpaths, match case ID
       ),
     );
     await loaded(art, 800, 1000);
-    await expect(art).toHaveAttribute("alt", "模擬病例的情境插畫");
-    await expect(page.locator(".body-svg")).toBeVisible();
-    await expect(page.locator(".body-note")).toHaveCount(entry.notes.length);
+    await expect(art).toHaveAttribute("alt", "這位病患的情境插畫");
+    await expect(page.locator(".stage-two-person .case-art-frame img")).toBeVisible();
+    await expect(page.locator(".body-svg,.body-note,.stage-two-clue-section")).toHaveCount(0);
+    await expect(page.getByText("我的病情線索")).toHaveCount(0);
     await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
     for (const disease of cases)
       await expect(page.locator("body")).not.toContainText(disease.disease);
     await expect(page.locator(".case-art")).not.toContainText("預留");
-    const boxes = await page
-      .locator(".patient-map-panel,.case-art")
-      .evaluateAll((els) =>
-        els.map((e) => {
-          const r = e.getBoundingClientRect();
-          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
-        }),
-      );
-    const [a, b] = boxes;
-    expect(
-      Math.min(a.right, b.right) - Math.max(a.left, b.left) <= 1 ||
-        Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) <= 1,
-    ).toBe(true);
+    const centered = await page.locator(".stage-two-person").evaluate(el => {
+      const bounds = el.getBoundingClientRect();
+      const parent = el.closest(".stage-two-speech-board").getBoundingClientRect();
+      return Math.abs((bounds.left + bounds.right) / 2 - (parent.left + parent.right) / 2);
+    });
+    expect(centered).toBeLessThan(3);
     await noOverflow(page);
     if (index === 0) await snap(page, info, "v15-patient");
   }
@@ -181,7 +175,7 @@ test("failed homepage art retains readable controls and failed case art falls ba
   await patient(page, 6);
   await expect(page.locator(".case-art")).toContainText("劇情圖片");
   await expect(page.locator(".case-art img")).toHaveCount(0);
-  await expect(page.locator(".body-note")).toHaveCount(cases[6].notes.length);
+  await expect(page.locator(".body-note,.stage-two-clue-section")).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(cases[6].disease);
   await noOverflow(page);
   await snap(page, info, "v15-fallback");

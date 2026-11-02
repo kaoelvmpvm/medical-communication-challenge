@@ -16,10 +16,21 @@ test("second-stage patient has one question banner, three speech bubbles, and a 
   assert.ok(!picker.includes("月經來的時候"));
   const empty = patient(session, patientView(entry), []);
   assert.equal((empty.match(/is-placeholder/g) || []).length, 3);
-  assert.ok(empty.includes('class="stage-two-person"'));
+  assert.ok(empty.includes('class="stage-two-person case-art"'));
+  assert.ok(empty.includes("劇情圖片"), "Missing art must have a placeholder");
   assert.ok(empty.includes(entry.diseaseCode));
-  assert.ok(empty.includes('class="stage-two-clue-section"'));
-  assert.ok(empty.includes('class="body-map"'));
+  assert.ok(!empty.includes("我的病情線索"));
+  assert.ok(!empty.includes('stage-two-clue-section'));
+  assert.ok(!empty.includes('class="body-map"'));
+  assert.ok(!empty.includes('class="body-note"'));
+  const imageHtml = patient(session, {
+    ...patientView(entry),
+    artUrl: "/medical-communication-challenge/art/cases/viral_conjunctivitis.webp",
+  }, []);
+  assert.ok(imageHtml.includes('src="/medical-communication-challenge/art/cases/viral_conjunctivitis.webp"'));
+  assert.ok(imageHtml.includes('alt="這位病患的情境插畫"'));
+  assert.ok(!imageHtml.includes('class="art-placeholder"'));
+  assert.ok(!imageHtml.includes("<svg"));
   assert.ok(!empty.includes(`<h2>${entry.disease}</h2>`));
 
   session.pending = "eyes";

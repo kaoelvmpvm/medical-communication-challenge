@@ -3,7 +3,7 @@ import { diseaseCatalog } from "../data/disease-catalog.js";
 import { symptoms, systems } from "../data/symptoms.js";
 import { stageOneSymptoms } from "../data/stage-one.js";
 import { questions } from "../data/questions.js";
-import { caseArt } from "./case-art.js";
+import { caseArt, artPlaceholder } from "./case-art.js";
 import { bodyMap } from "./body-map.js";
 import {
   button as b,
@@ -124,26 +124,15 @@ function stageTwoPatient(s, view, options) {
           `<div class="stage-two-speech-choice speech-position-${index + 1} is-placeholder"><span>${label}</span></div>`
         ).join("")}
       </div>
-      <div class="stage-two-person" aria-hidden="true">
-        <svg viewBox="0 0 180 220" focusable="false">
-          <circle cx="90" cy="45" r="33" fill="currentColor"/>
-          <path d="M56 91 Q90 72 124 91 Q137 98 141 120 L165 213 H134 L116 151 V216 H64 V151 L46 213 H15 L39 120 Q43 98 56 91Z" fill="currentColor"/>
-        </svg>
-      </div>
+      <figure class="stage-two-person case-art" aria-label="本次病患情境插畫">
+        <div class="case-art-frame">${view.artUrl
+          ? `<img src="${e(view.artUrl)}" alt="這位病患的情境插畫" width="800" height="1000" decoding="async">`
+          : artPlaceholder}</div>
+      </figure>
     </div>
     ${!question ? '<p class="stage-two-choice-hint">請先從上方選擇醫師剛才問的問題，三種回答就會出現。</p>' :
       s.submitted ? `<section class="answer-analysis" role="status" aria-live="polite"><h2>${e(chosen.quality)}</h2><p>${e(chosen.analysis)}</p></section><p class="stage-two-choice-hint">請把選好的回答口頭告訴醫師。</p>` :
       `<div class="answer-submit">${b(s.independent ? "確認回答" : "確認送出回答", "submit-answer", { kind: "primary", disabled: !s.selectedAnswer })}<p>先比較三個說法，再選擇一個；確認後才會公布這個說法的特色。</p></div>`}
-  </section>
-  <section class="stage-two-clue-section" aria-labelledby="clue-heading">
-    <div class="section-heading"><h2 id="clue-heading">我的病情線索</h2><p>依照這些身體感受，判斷怎樣說才最清楚。</p></div>
-    <div class="patient-visual-layout">
-      <section class="panel patient-map-panel" aria-label="病情感受圖">
-        <div class="map-heading"><span>情境中的身體感受</span><span class="map-instruction">點選編號，查看對應感受</span></div>
-        ${bodyMap(view)}${profileFacts(view.profile)}
-      </section>
-      ${caseArt(view.artUrl)}
-    </div>
   </section>`;
 }
 function practicePanel(s) {

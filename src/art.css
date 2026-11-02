@@ -714,8 +714,9 @@
   align-items: center;
   gap: 13px;
   min-width: 0;
-  min-height: 212px;
-  padding: 20px 19px 22px;
+  min-height: 282px;
+  height: 300px;
+  padding: 18px 16px 19px;
   border: 2px solid #254d87;
   border-radius: 34px;
   background: var(--bubble-blue);
@@ -778,23 +779,50 @@
   font-weight: 750;
 }
 .speech-choice-text {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  max-height: 205px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #dceafd66 transparent;
+  padding: 0 5px;
   font-weight: 600;
   font-size: clamp(15px, 1.5vw, 18px);
 }
 .speech-choice-state { font-size: 13px; color: #f0f6ff; }
-.stage-two-person {
-  display: flex;
-  justify-content: center;
-  height: 170px;
-  margin-top: 43px;
+.stage-two-person.case-art {
+  display: block;
+  width: min(270px, 48vw);
+  max-width: 100%;
+  height: auto;
+  margin: 52px auto 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 19px;
+  background: transparent;
+  box-shadow: none;
   color: #142a40;
 }
-.stage-two-person svg {
+.stage-two-person .case-art-frame {
+  aspect-ratio: 4 / 5;
+  width: 100%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  border-radius: 18px;
+  background: #f8f4e9;
+  box-shadow: 0 10px 25px #1b345329;
+}
+.stage-two-person .case-art-frame img {
   display: block;
-  width: 170px;
-  height: 210px;
-  max-height: 100%;
-  filter: drop-shadow(0 3px 1px #142a4015);
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.stage-two-person .art-placeholder {
+  aspect-ratio: 4 / 5;
+  min-height: 200px;
 }
 .stage-two-choice-hint {
   text-align: center;
@@ -804,16 +832,9 @@
 }
 .stage-two-patient .answer-submit { justify-content: center; margin-top: 15px; }
 .stage-two-patient .answer-analysis { max-width: 900px; margin: 22px auto 10px; }
-.stage-two-clue-section {
-  margin-top: 32px;
-  padding-top: 22px;
-  border-top: 2px solid #d6e5ed;
-}
-.stage-two-clue-section .section-heading { margin-bottom: 18px; }
-.stage-two-clue-section .section-heading p { color: #54687c; margin: 0; }
 @media (min-width: 761px) and (max-width: 1050px) {
   .stage-two-speech-choices { gap: 13px; padding: 0; }
-  .stage-two-speech-choice { padding: 14px 12px; min-height: 230px; border-radius: 24px; }
+  .stage-two-speech-choice { padding: 14px 12px; min-height: 260px; height: 290px; border-radius: 24px; }
   .speech-choice-text { font-size: 15px; }
 }
 @media (max-width: 760px) {
@@ -821,15 +842,19 @@
   .stage-two-question-bar select { font-size: 15px; }
   .stage-two-speech-choices { grid-template-columns: 1fr; gap: 14px; padding-inline: 0; }
   .stage-two-speech-choice {
-    min-height: 110px;
+    min-height: 120px;
+    height: auto;
+    max-height: 265px;
     padding: 16px 16px;
     border-radius: 20px;
     gap: 8px;
   }
+  .stage-two-speech-choice .speech-choice-text {
+    max-height: 164px;
+  }
   .stage-two-speech-choice.is-selected { padding: 14px; }
   .stage-two-speech-choice::after { display: none; }
-  .stage-two-person { margin-top: 10px; height: 118px; }
-  .stage-two-person svg { width: 112px; }
+  .stage-two-person.case-art { margin-top: 18px; width: min(240px, 68vw); }
   .stage-two-patient-heading .disease-code { padding: 7px 11px; }
 }
 @media (prefers-reduced-motion: reduce) {
