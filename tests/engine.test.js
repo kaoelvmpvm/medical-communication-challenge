@@ -143,9 +143,9 @@ test("stage two requires patient confirmation, locks a sent answer, and preserve
   assert.equal(s.questionCount, 1);
   assert.equal(s.role, null);
   enterRole(s);
-  assert.equal(optionsFor(s).length, 4);
+  assert.equal(optionsFor(s).length, 3);
   assert.equal(submitAnswer(s), false);
-  selectAnswer(s, "vague");
+  selectAnswer(s, "overlong");
   assert.equal(s.history.length, 0);
   selectAnswer(s, "detail");
   assert.equal(submitAnswer(s), true);
@@ -160,7 +160,7 @@ test("stage two requires patient confirmation, locks a sent answer, and preserve
   assert.equal(ask(s, "nose"), true);
   assert.equal(s.questionCount, 2);
 });
-test("all cases and questions produce four distinct non-diagnostic responses", () => {
+test("all cases and questions produce exactly three distinct non-diagnostic speaking styles", () => {
   for (const entry of cases)
     for (const question of questions) {
       const s = doctor(2);
@@ -171,7 +171,10 @@ test("all cases and questions produce four distinct non-diagnostic responses", (
         assert.equal(options.length, 0);
         continue;
       }
-      assert.equal(new Set(options.map((item) => item.text)).size, 4);
+      assert.equal(options.length, 3);
+      assert.deepEqual(new Set(options.map(x => x.id)), new Set(["overlong", "detail", "brief"]));
+      assert.equal(new Set(options.map((item) => item.text)).size, 3);
+      assert.deepEqual(new Set(options.map(x => x.quality)), new Set(["說太多但沒用","說得恰到好處","說得太少"]));
       for (const option of options) {
         assert.ok(option.analysis.length > 10);
         for (const candidate of cases)

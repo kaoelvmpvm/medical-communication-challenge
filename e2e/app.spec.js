@@ -73,7 +73,7 @@ async function layout(page) {
   ).toBe(true);
   const overlaps = await page
     .locator(
-      ".body-note,.symptom-card,.candidate,.answer-option,.record-row,.role-entry,.body-marker",
+      ".body-note,.symptom-card,.candidate,.stage-two-speech-choice,.record-row,.role-entry,.body-marker",
     )
     .evaluateAll((elements) => {
       const rects = elements
@@ -408,7 +408,7 @@ test("five independent tablets, manual stage-two question selection, stage-three
     await expect(pages[0].locator(".selected-question")).toContainText("頭部");
     await expect(pages[4].locator("#patient-question")).toHaveValue("");
     await pages[4].locator("#patient-question").selectOption("head");
-    await expect(pages[4].locator(".answer-option")).toHaveCount(4);
+    await expect(pages[4].locator(".stage-two-speech-choice")).toHaveCount(3);
     await pages[4].locator('[data-action="answer"][data-id="detail"]').click();
     await expect(pages[4].locator(".answer-analysis")).toHaveCount(0);
     await pages[4].getByRole("button", { name: "確認回答" }).click();
@@ -600,7 +600,7 @@ test("new cases answer source-based questions, preserve unknown facts and condit
       entry.id === "dysmenorrhea" ? 1 : 0,
     );
     await page.locator("#patient-question").selectOption(topic);
-    await expect(page.locator(".answer-option")).toHaveCount(4);
+    await expect(page.locator(".stage-two-speech-choice")).toHaveCount(3);
     const chosen = page.locator('[data-action="answer"][data-id="detail"]');
     await expect(chosen).toContainText(entry.responses[topic]);
     await chosen.click();

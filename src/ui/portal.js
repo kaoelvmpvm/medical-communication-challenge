@@ -23,14 +23,15 @@ export function studentStatus(s, count) {
   return `<div class="session-status"><span class="role-tag ${s.role}">${s.role === "doctor" ? "＋ 醫師端" : "◎ 病人端"}</span><span>第 ${s.stage} 階段・${stageLabels[s.stage - 1]}</span>${s.role === "doctor" && s.stage !== 3 ? `${s.stage === 2 ? `<span>練習提問 <strong data-question-count>${s.questionCount}</strong></span>` : ""}<span>候選 <strong data-match-count>${count}</strong> 個</span>` : ""}<div class="status-actions">${s.role === "doctor" ? b("一鍵清空", "reset-doctor", { kind: "secondary" }) : ""}${b("更換階段", "change-stage")}</div></div>`;
 }
 export function patientQuestions(s, caseId) {
-  return `<section class="panel patient-question-picker"><h2>醫師現在問的是哪一題？</h2><p>選擇醫師口頭提出的問題，再到下方選擇回答。</p><label>選擇聽到的問題<select id="patient-question"><option value="">尚未選擇</option>${questionsForCase(
-    caseId,
-  )
-    .map(
-      (question) =>
-        `<option value="${question.id}" ${s.pending === question.id ? "selected" : ""}>${e(question.title)}</option>`,
-    )
-    .join("")}</select></label></section>`;
+  return `<section class="stage-two-question-bar" aria-labelledby="patient-question-title">
+    <label for="patient-question" id="patient-question-title">選擇聽到的問題</label>
+    <select id="patient-question" aria-label="選擇聽到的問題">
+      <option value="">請選擇醫師剛才提出的問題</option>
+      ${questionsForCase(caseId).map((question) =>
+        `<option value="${question.id}" ${s.pending === question.id ? "selected" : ""}>${e(question.title)}</option>`
+      ).join("")}
+    </select>
+  </section>`;
 }
 
 export function patientLoading(_stage) {

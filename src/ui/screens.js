@@ -95,11 +95,56 @@ export function doctor(s, diseases, matching) {
 
 
 export function patient(s, view, options) {
+  if (s.stage === 2) return stageTwoPatient(s, view, options);
   const question = questions.find((item) => item.id === s.pending);
   const chosen = options.find((option) => option.id === s.selectedAnswer);
   return `<section class="patient-heading"><div><span class="eyebrow">${s.stage === 1 ? "讀懂感受，只回答是或否" : "感受在這裡，請用自己的話說"}</span><h1 id="screen-title" tabindex="-1">我的身體，怎麼了？</h1><p>${s.stage === 1 ? "先讀情境；醫師提問時，依已知內容口頭回答「是」或「否」，不要直接念出描述。" : s.stage === 2 ? "看看情境中的身體感受，再回應醫師提出的問題。" : "看著身體圖，整理重點，主動向醫師說出完整的身體感受。"}</p></div><div class="patient-identity"><span class="private-label">▣ 僅供病患閱讀</span><span class="disease-code">疾病代碼 <strong>${e(view.diseaseCode)}</strong></span></div></section>
   <div class="patient-visual-layout"><section class="panel patient-map-panel" aria-label="病情感受圖"><div class="map-heading"><span>情境中的身體感受</span><span class="map-instruction">點選編號，查看對應感受</span></div>${bodyMap(view)}${profileFacts(view.profile)}</section>${caseArt(view.artUrl)}</div>
   ${s.stage === 2 ? `<section class="panel answer-panel" aria-labelledby="answer-title"><div class="section-heading"><div><span class="eyebrow">${s.independent ? "先選擇，再確認回答" : "先選擇，再確認送出"}</span><h2 id="answer-title">回應醫師的問題</h2></div><span class="subtle-badge">${s.submitted ? (s.independent ? "✓ 已確認回答" : "✓ 已確認送出") : s.selectedAnswer ? (s.independent ? "已選擇・尚未確認" : "已選擇・尚未送出") : "等待選擇"}</span></div>${question ? `<blockquote class="current-question">${e(question.title)}</blockquote><div class="answer-options" role="group" aria-label="選擇病患回答">${options.map((option, index) => `<button type="button" class="answer-option ${s.selectedAnswer === option.id ? "selected" : ""}" data-action="answer" data-id="${option.id}" aria-pressed="${s.selectedAnswer === option.id}" ${s.submitted ? "disabled" : ""}><span class="option-number">${index + 1}</span><span>${e(option.text)}</span><span class="option-state">${s.selectedAnswer === option.id ? "✓ 已選擇" : "選擇"}</span></button>`).join("")}</div>${s.submitted ? `<div class="answer-analysis" role="status"><span class="eyebrow">${s.independent ? "已確認・表達品質解析" : "已送出・表達品質解析"}</span><h3>${e(chosen.quality)}</h3><p>${e(chosen.analysis)}</p></div>${s.independent ? `<p class="notice">請把確認的回答口頭告訴醫師。</p>` : b("交給醫師，查看回答", "switch", { kind: "primary" })}` : `<div class="answer-submit">${b(s.independent ? "確認回答" : "確認送出回答", "submit-answer", { kind: "primary", disabled: !s.selectedAnswer })}<p>${s.independent ? "確認後查看解析，再口頭回答醫師。" : "確認後才會顯示解析，醫師也才能看到你的回答。"}</p></div>`}` : `${s.independent ? `<p class="empty-state">先聽醫師口頭提問，再從上方選擇同一問題。</p>` : `<div class="empty-state">醫師還沒有選擇問題。先熟悉身體感受，再交給醫師選問。</div>${b("交給醫師選擇問題", "switch", { kind: "primary" })}`}`}</section>` : s.stage === 3 ? practicePanel(s) : `<div class="patient-bottom">${notice("已知內容只回答「是」或「否」。資料不足或不適用時，請教師判定並重新提問，不要猜成「否」。")}${s.independent ? `<p class="muted">讀完後請口頭回應醫師，不需交換平板。</p>` : b("我讀好了，交給醫師", "switch", { kind: "primary" })}</div>`}`;
+}
+
+function stageTwoPatient(s, view, options) {
+  const question = questions.find((item) => item.id === s.pending);
+  const chosen = options.find((item) => item.id === s.selectedAnswer);
+  const placeholders = ["說法選擇 1", "說法選擇 2", "說法選擇 3"];
+  return `<section class="stage-two-patient" aria-labelledby="screen-title">
+    <div class="stage-two-patient-heading">
+      <div><span class="eyebrow">第二階段・病患表達練習</span><h1 id="screen-title" tabindex="-1">換你決定怎麼回答！</h1></div>
+      <span class="disease-code">疾病代碼 <strong>${e(view.diseaseCode)}</strong></span>
+    </div>
+    <div class="stage-two-speech-board">
+      <div class="stage-two-speech-choices" role="group" aria-label="三種病患回答說法">
+        ${question ? options.map((option, index) =>
+          `<button type="button" class="stage-two-speech-choice speech-position-${index + 1} ${s.selectedAnswer === option.id ? "is-selected" : ""}" data-action="answer" data-id="${option.id}" aria-pressed="${s.selectedAnswer === option.id}" ${s.submitted ? "disabled" : ""}>
+            <span class="speech-choice-number">說法 ${index + 1}</span>
+            <span class="speech-choice-text">${e(option.text)}</span>
+            <span class="speech-choice-state">${s.selectedAnswer === option.id ? "✓ 已選擇" : "點選這個說法"}</span>
+          </button>`
+        ).join("") : placeholders.map((label, index) =>
+          `<div class="stage-two-speech-choice speech-position-${index + 1} is-placeholder"><span>${label}</span></div>`
+        ).join("")}
+      </div>
+      <div class="stage-two-person" aria-hidden="true">
+        <svg viewBox="0 0 180 220" focusable="false">
+          <circle cx="90" cy="45" r="33" fill="currentColor"/>
+          <path d="M56 91 Q90 72 124 91 Q137 98 141 120 L165 213 H134 L116 151 V216 H64 V151 L46 213 H15 L39 120 Q43 98 56 91Z" fill="currentColor"/>
+        </svg>
+      </div>
+    </div>
+    ${!question ? '<p class="stage-two-choice-hint">請先從上方選擇醫師剛才問的問題，三種回答就會出現。</p>' :
+      s.submitted ? `<section class="answer-analysis" role="status" aria-live="polite"><h2>${e(chosen.quality)}</h2><p>${e(chosen.analysis)}</p></section><p class="stage-two-choice-hint">請把選好的回答口頭告訴醫師。</p>` :
+      `<div class="answer-submit">${b(s.independent ? "確認回答" : "確認送出回答", "submit-answer", { kind: "primary", disabled: !s.selectedAnswer })}<p>先比較三個說法，再選擇一個；確認後才會公布這個說法的特色。</p></div>`}
+  </section>
+  <section class="stage-two-clue-section" aria-labelledby="clue-heading">
+    <div class="section-heading"><h2 id="clue-heading">我的病情線索</h2><p>依照這些身體感受，判斷怎樣說才最清楚。</p></div>
+    <div class="patient-visual-layout">
+      <section class="panel patient-map-panel" aria-label="病情感受圖">
+        <div class="map-heading"><span>情境中的身體感受</span><span class="map-instruction">點選編號，查看對應感受</span></div>
+        ${bodyMap(view)}${profileFacts(view.profile)}
+      </section>
+      ${caseArt(view.artUrl)}
+    </div>
+  </section>`;
 }
 function practicePanel(s) {
   return `<section class="panel practice-panel"><span class="eyebrow">第三階段・主動描述</span><h2>把病情說成一段完整的話</h2><p>可以依照下面的順序練習；勾選只用來提醒自己。</p><div class="practice-checks">${[

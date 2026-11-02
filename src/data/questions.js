@@ -147,37 +147,40 @@ export function answerOptions(entry, question) {
   const detailed = {
     id: "detail",
     text: detail,
-    quality: hasSource ? "具體且切合問題" : "清楚說明資料不足",
+    quality: "說得恰到好處",
     analysis: hasSource
-      ? "這個回答使用情境已有的具體資訊；沒有設定的部分如實說明不確定，不猜原因，也不把未知當成沒有。"
-      : "明確說出不確定，比編造「有」或「沒有」更可靠。教師可判定這題無效，請醫師換個問題。",
+      ? "具體且切合問題：使用情境已有的感受、位置、時間或變化；沒有設定的資訊，清楚說明不確定。"
+      : "具體且切合問題：情境沒有提供這方面的資訊，坦白說不確定，比憑空猜測更適當。",
   };
+  // The overlong choice uses another *actual* case note, but avoids the asked
+  // anatomical region. No invented symptoms or diagnoses enter the scenario.
+  const tangent = entry.notes.find((note) => !question.parts.includes(note.part))?.text;
+  const longwinded = [
+    "嗯，這個問題讓我想到好多事情，我不知道要先從哪裡開始說。",
+    tangent ? `我先想到的是：${tangent}` : "我覺得自己可以先說很多其他事情。",
+    "而且每次有人問我身體的感覺，我都會想把各種事情一起講完，因為我覺得有好多東西值得提起。",
+    "我還會想到以前自己怎麼描述不舒服、別人通常怎麼問問題，想到很多方向。",
+    "所以我想先把這些念頭都說完，再想想你剛才究竟問的是什麼。",
+  ].join(" ");
   const options = [
     {
-      id: "vague",
-      text: "就是有些感覺，我也說不清楚。",
-      quality: "可以再具體一點",
-      analysis:
-        "有設定的資訊可以補上位置、感覺或時間；沒有資料時要明確說不確定。",
+      id: "overlong",
+      text: longwinded,
+      quality: "說太多但沒用",
+      analysis: "雖然說了很多，卻沒有直接回答醫師當下的問題。請挑出相關的身體感受，減少離題內容。",
     },
     detailed,
     {
-      id: "guess",
-      text: "我覺得原因應該不用再確認了，也不需要補充哪裡不舒服、什麼時候開始或怎麼變化。只要猜一個原因就好，沒有注意到的部分也可以直接當作都沒有。",
-      quality: "先描述已知資訊，不猜原因",
-      analysis:
-        "這個說法省略了重要資訊，也把未知當成沒有。應依情境提供事實，資料不足時如實說明。",
-    },
-    {
       id: "brief",
-      text: related.length
-        ? "這個部位跟平常感覺不太一樣。"
-        : "我還想再確認這件事。",
-      quality: "可以說明得更清楚",
-      analysis: "補上已知的具體細節，或清楚說情境沒有提供；不用編造答案。",
+      text: hasSource ? "就是有點不舒服。" : "不知道。",
+      quality: "說得太少",
+      analysis: hasSource
+        ? "內容太少，醫師無法了解身體哪裡、怎麼不舒服，以及時間或變化；可補上已有的具體線索。"
+        : "資訊不足時應清楚說出「這個部分還沒注意到，情境沒有提供」，不要只用一句「不知道」帶過。",
     },
   ];
-  // Stable variation prevents a fixed answer position, while confirmation still controls analysis.
+  // Shuffle the 3 positions deterministically for each case–question pair.
+  // Never mark the correct category before the student confirms an answer.
   const offset =
     [...(entry.id + question.id)].reduce(
       (sum, char) => sum + char.charCodeAt(0),
