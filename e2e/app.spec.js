@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { makeCode } from "../src/game/codes.js";
 import { cases } from "../src/data/cases.js";
 import { symptoms } from "../src/data/symptoms.js";
 import { stageOneCases, stageOneSymptoms } from "../src/data/stage-one.js";
@@ -38,29 +37,33 @@ async function fillGroup(page, number, seats) {
 }
 async function startStudent(page, role, stage = 1, round = 1, index = 0) {
   await page.goto(root);
-  await page
-    .getByRole("button", {
-      name: role === "doctor" ? "我是醫生" : "我是病人",
-      exact: false,
-    })
-    .click();
+  if (role === "patient" && stage !== 1) {
+    // Deterministic browser test case selection without exposing a student entry code.
+    await page.evaluate(({ stage, index }) => {
+      sessionStorage.removeItem(`medical-challenge-stage-one-patient-v16-stage-${stage}`);
+      const original = crypto.getRandomValues.bind(crypto);
+      Object.defineProperty(crypto, "getRandomValues", {
+        configurable: true,
+        value: (array) => {
+          if (array instanceof Uint32Array && array.length === 1) {
+            array[0] = index;
+            return array;
+          }
+          return original(array);
+        },
+      });
+    }, { stage, index });
+  }
+  await page.getByRole("button", {
+    name: role === "doctor" ? "我是醫生" : "我是病人",
+    exact: false,
+  }).click();
   await page.locator(`[data-action="choose-stage"][data-stage="${stage}"]`).click();
-  await expect(page.locator('[name="round"]')).toHaveCount(0);
-  if (role === "patient" && stage !== 1)
-    await page
-      .getByLabel("教師提供的病例碼", { exact: true })
-      .fill(makeCode(index, stage, round));
-  await page
-    .getByRole("button", {
-      name:
-        role === "doctor"
-          ? "進入醫師端"
-          : stage === 1
-            ? "開始回合"
-            : "載入病例",
-      exact: true,
-    })
-    .click();
+  await expect(page.locator('[name="round"],[name="code"]')).toHaveCount(0);
+  await page.getByRole("button", {
+    name: role === "doctor" ? "進入醫師端" : "開始回合",
+    exact: true,
+  }).click();
 }
 async function layout(page) {
   expect(
@@ -280,20 +283,13 @@ test("official counters, bounds, tied ranks, independent stages, persistence, CS
   await expect(restored.locator(".record-row")).toHaveCount(2);
   await context.close();
   await page
-    .getByRole("button", { name: "病例與病人輪替", exact: true })
+    .getByRole("button", { name: "病人輪替", exact: true })
     .click();
   await expect(page.locator(".group-plan input")).toHaveCount(0);
   await expect(page.locator(".group-plan details")).toHaveCount(0);
   await page.getByRole("button", { name: "第二階段", exact: true }).click();
-  await expect(
-    page.locator(".group-plan").first().locator("input[readonly]"),
-  ).toHaveCount(5);
-  const codes = await page
-    .locator(".group-plan")
-    .first()
-    .locator("input")
-    .evaluateAll((elements) => elements.map((el) => el.value));
-  expect(new Set(codes).size).toBe(5);
+  await expect(page.locator(".group-plan input")).toHaveCount(0);
+  await expect(page.locator(".round-plan-grid article").first()).toContainText("自行載入");
   await page.getByRole("button", { name: "第三階段", exact: true }).click();
   await expect(page.locator(".score-sheet")).toHaveCount(0);
   await layout(page);
@@ -448,24 +444,16 @@ test("five independent tablets, manual stage-two question selection, stage-three
   }
 });
 
-test("invalid case codes and unavailable or corrupt teacher storage fail safely", async ({
+test("all stages omit case-code inputs; unavailable or corrupt teacher storage remains safe", async ({
   page,
 }) => {
   await page.goto("./");
   await page.getByRole("button", { name: "我是病人", exact: false }).click();
-  await expect(page.locator('[name="code"]')).toHaveCount(0);
-  await page.locator('[data-action="choose-stage"][data-stage="2"]').click();
-  await page
-    .getByLabel("教師提供的病例碼", { exact: true })
-    .fill("123456789012");
-  await page.getByRole("button", { name: "載入病例", exact: true }).click();
-  await expect(page.locator("#student-error")).toContainText("病例碼");
-  await expect(page.locator(".body-note")).toHaveCount(0);
-  await page
-    .getByLabel("教師提供的病例碼", { exact: true })
-    .fill(makeCode(0, 3, 1));
-  await page.getByRole("button", { name: "載入病例", exact: true }).click();
-  await expect(page.locator("#student-error")).toContainText("不一致");
+  for (const stage of [1, 2, 3]) {
+    await page.locator(`[data-action="choose-stage"][data-stage="${stage}"]`).click();
+    await expect(page.locator('[name="code"]')).toHaveCount(0);
+    await expect(page.locator("#student-start")).toHaveText("開始回合");
+  }
   await page.evaluate(
     (key) => localStorage.setItem(key, "broken backup"),
     STORAGE_KEY,
@@ -516,7 +504,7 @@ test("stage-one random cases persist on refresh; next patient draws and round se
   await startStudent(page, "patient", 1);
   await expect(page.locator('[name="round"],[name="code"]')).toHaveCount(0);
   await expect(page.locator(`#${stageOneCases[4].notes[0].id}`)).toContainText(stageOneCases[4].notes[0].text);
-  await expect(page.locator(".disease-code")).toHaveCount(0);
+  await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
   await page.reload();
   await expect(page.locator(`#${stageOneCases[4].notes[0].id}`)).toContainText(stageOneCases[4].notes[0].text);
@@ -526,21 +514,20 @@ test("stage-one random cases persist on refresh; next patient draws and round se
   await expect(page.locator(`#${stageOneCases[2].notes[0].id}`)).toContainText(stageOneCases[2].notes[0].text);
   expect(await page.evaluate(() => window.__caseDraws)).toBe(1);
   await page.reload();
-  await expect(page.locator(".disease-code")).toHaveCount(0);
+  await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
   await layout(page);
   await axe(page);
   await snap(page, info, "stage-one-patient");
   await page.getByRole("button", { name: "更換階段" }).click();
   await expect(page.locator('[name="round"]')).toHaveCount(0);
   await page.locator('[data-action="choose-stage"][data-stage="2"]').click();
-  await page.getByLabel("教師提供的病例碼", { exact: true }).fill(makeCode(3, 2, 5));
-  await page.getByRole("button", { name: "載入病例", exact: true }).click();
+  await expect(page.locator('[name="code"]')).toHaveCount(0);
+  await page.getByRole("button", { name: "開始回合", exact: true }).click();
   await page.getByRole("button", { name: "確認", exact: true }).click();
-  await expect(page.locator(".disease-code")).toHaveCount(0);
+  await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
   await page.getByRole("button", { name: "下一位病患" }).click();
-  await expect(page.locator(".body-note")).toHaveCount(0);
-  await expect(page.locator('[name="stage"]')).toHaveValue("2");
-  await expect(page.getByLabel("教師提供的病例碼", { exact: true })).toHaveValue("");
+  await expect(page.locator(".body-note")).not.toHaveCount(0);
+  await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
 });
 
 test("teacher can query all twelve internal codes; patient sees only stable identifier and supplied case art", async ({
@@ -573,7 +560,7 @@ test("teacher can query all twelve internal codes; patient sees only stable iden
     if (response.status() >= 400) failures.push(response.url());
   });
   await startStudent(page, "patient", 2, 1, 0);
-  await expect(page.locator(".disease-code")).toHaveCount(0);
+  await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
   await expect(page.locator(".case-art img")).toHaveAttribute(
     "src",
     /\/medical-communication-challenge\/art\/cases\/cold\.webp$/,
@@ -605,7 +592,7 @@ test("new cases answer source-based questions, preserve unknown facts and condit
     await startStudent(page, "patient", 2, 1, index);
     const entry = cases[index],
       topic = topics[index - 6];
-    await expect(page.locator(".disease-code")).toHaveCount(0);
+    await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
     const periodOptions = page.locator(
       '#patient-question option[value="period"]',
     );
@@ -742,4 +729,24 @@ test("possible diseases show pale green, conflicts gray, and the music volume sl
   const gray = await flu.evaluate(el => getComputedStyle(el).backgroundColor);
   expect(gray).toBe("rgb(236, 239, 241)");
   await expect(page.locator(".candidate.uncertain").first()).toHaveCSS("border-top-style", "solid");
+});
+
+test("doctor candidate board stays aligned across tablet and desktop widths", async ({ page }) => {
+  await startStudent(page, "doctor", 1);
+  const grid = page.locator(".candidate-grid");
+  const cards = page.locator(".candidate");
+  await expect(cards).toHaveCount(8);
+  const width = page.viewportSize()?.width || 1440;
+  const expectedCols = width <= 540 ? 1 : width <= 980 ? 2 : 4;
+  const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  expect(columns).toBe(expectedCols);
+  const boxes = await cards.evaluateAll(elements => elements.map(el => {
+    const b = el.getBoundingClientRect();
+    return { top: Math.round(b.top), height: Math.round(b.height), left: Math.round(b.left) };
+  }));
+  expect(boxes.slice(0, expectedCols).every(box => box.height === boxes[0].height)).toBe(true);
+  await startStudent(page, "doctor", 2);
+  await expect(page.locator(".candidate")).toHaveCount(12);
+  const columns2 = await page.locator(".candidate-grid").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  expect(columns2).toBe(expectedCols);
 });

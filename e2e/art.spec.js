@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { cases } from "../src/data/cases.js";
-import { makeCode } from "../src/game/codes.js";
 
 async function loaded(image, width, height) {
   await expect(image).toBeVisible();
@@ -28,12 +27,24 @@ async function noOverflow(page) {
 }
 async function patient(page, index, stage = 2) {
   await page.goto("./");
+  await page.evaluate(({ stage, index }) => {
+    sessionStorage.removeItem(`medical-challenge-stage-one-patient-v16-stage-${stage}`);
+    const original = crypto.getRandomValues.bind(crypto);
+    Object.defineProperty(crypto, "getRandomValues", {
+      configurable: true,
+      value: (array) => {
+        if (array instanceof Uint32Array && array.length === 1) {
+          array[0] = index;
+          return array;
+        }
+        return original(array);
+      },
+    });
+  }, { stage, index });
   await page.getByRole("button", { name: "我是病人", exact: true }).click();
   await page.locator(`[data-action="choose-stage"][data-stage="${stage}"]`).click();
-  await page
-    .getByLabel("教師提供的病例碼", { exact: true })
-    .fill(makeCode(index, stage, 1));
-  await page.getByRole("button", { name: "載入病例", exact: true }).click();
+  await expect(page.locator('[name="code"]')).toHaveCount(0);
+  await page.getByRole("button", { name: "開始回合", exact: true }).click();
 }
 async function snap(page, info, name) {
   await page.evaluate(() => scrollTo(0, 0));
@@ -134,7 +145,7 @@ test("all twelve patient illustrations decode from Pages subpaths, match case ID
     await expect(art).toHaveAttribute("alt", "模擬病例的情境插畫");
     await expect(page.locator(".body-svg")).toBeVisible();
     await expect(page.locator(".body-note")).toHaveCount(entry.notes.length);
-    await expect(page.locator(".disease-code")).toHaveCount(0);
+    await expect(page.locator(".disease-code strong")).toHaveText(/^[0-9]{4}$/);
     for (const disease of cases)
       await expect(page.locator("body")).not.toContainText(disease.disease);
     await expect(page.locator(".case-art")).not.toContainText("預留");
