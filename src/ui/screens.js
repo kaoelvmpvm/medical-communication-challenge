@@ -113,11 +113,11 @@ function stageTwoPatient(s, view, options) {
       <div><span class="eyebrow">第二階段・病患表達練習</span><h1 id="screen-title" tabindex="-1">換你決定怎麼回答！</h1></div>
       <span class="disease-code">疾病代碼 <strong>${e(view.diseaseCode)}</strong></span>
     </div>
-    <p class="paper-instruction">先比較三種說法，點選紙卡後可在下方閱讀完整內容，再決定是否確認。</p>
+    <p class="paper-instruction">選擇醫師提出的問題，再點選紙卡閱讀完整回答；可以隨時改選。</p>
     <div class="stage-two-speech-board">
       <div class="stage-two-speech-choices" role="group" aria-label="三種病患回答說法">
         ${question ? options.map((option, index) =>
-          `<button type="button" class="stage-two-speech-choice paper-choice speech-position-${index + 1} ${s.selectedAnswer === option.id ? "is-selected" : ""}" data-action="answer" data-id="${option.id}" aria-pressed="${s.selectedAnswer === option.id}" aria-controls="selected-speech-detail" ${s.submitted ? "disabled" : ""}>
+          `<button type="button" class="stage-two-speech-choice paper-choice speech-position-${index + 1} ${s.selectedAnswer === option.id ? "is-selected" : ""}" data-action="answer" data-id="${option.id}" aria-pressed="${s.selectedAnswer === option.id}" aria-controls="selected-speech-detail">
             <span class="speech-choice-number"><span aria-hidden="true">✎ </span>說法 ${index + 1}</span>
             <span class="speech-choice-text">${e(option.text)}</span>
             <span class="speech-choice-state">${s.selectedAnswer === option.id ? "✓ 已選擇" : "點選閱讀全文"}</span>
@@ -127,7 +127,7 @@ function stageTwoPatient(s, view, options) {
         ).join("")}
       </div>
       ${chosen ? `<section class="stage-two-speech-detail" id="selected-speech-detail" role="region" aria-live="polite" aria-label="所選說法的完整內容">
-        <div class="speech-detail-heading"><h2>說法 ${chosenPosition + 1}｜完整內容</h2><span>${s.submitted ? "已確認" : "可重新選擇"}</span></div>
+        <div class="speech-detail-heading"><h2>說法 ${chosenPosition + 1}｜完整內容</h2><span>可隨時改選</span></div>
         <p>${e(chosen.text)}</p>
       </section>` : `<p class="stage-two-choice-hint" id="selected-speech-detail">${question ? "點選任一張紙卡，即可在這裡閱讀完整回答。" : "請先從上方選擇醫師剛才問的問題，三種回答就會出現。"}</p>`}
       <figure class="stage-two-person case-art" aria-label="本次病患情境插畫">
@@ -136,9 +136,6 @@ function stageTwoPatient(s, view, options) {
           : artPlaceholder}</div>
       </figure>
     </div>
-    ${!question ? "" :
-      s.submitted ? `<section class="answer-analysis" role="status" aria-live="polite"><h2>${e(chosen.quality)}</h2><p>${e(chosen.analysis)}</p></section><p class="stage-two-choice-hint">請把選好的回答口頭告訴醫師。</p>` :
-      `<div class="answer-submit">${b(s.independent ? "確認回答" : "確認送出回答", "submit-answer", { kind: "primary", disabled: !s.selectedAnswer })}<p>可以反覆比較三種說法，確認後才會公布這個說法的特色。</p></div>`}
   </section>`;
 }
 function practicePanel(s) {

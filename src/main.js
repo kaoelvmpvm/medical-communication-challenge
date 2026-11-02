@@ -16,7 +16,6 @@ import {
   ask,
   optionsFor,
   selectAnswer,
-  submitAnswer,
 } from "./game/engine.js";
 import { createPatientRounds } from "./game/random-round.js";
 import { doctor, patient, candidateCards } from "./ui/screens.js";
@@ -349,16 +348,7 @@ app.addEventListener("click", (event) => {
         .querySelector(`[data-action="answer"][data-id="${target.dataset.id}"]`)
         .focus({ preventScroll: true });
       scrollTo({ top: y, behavior: "instant" });
-      announce("已選擇，尚未確認。");
-    }
-    return;
-  }
-  if (action === "submit-answer") {
-    if (submitAnswer(session)) {
-      render({ focus: false });
-      const analysis = main.querySelector(".answer-analysis");
-      analysis.setAttribute("tabindex", "-1");
-      analysis.focus();
+      announce("已選擇，可以隨時改選或切換問題。");
     }
     return;
   }
@@ -429,14 +419,7 @@ app.addEventListener("change", (event) => {
       render({ focus: false });
       main.querySelector("#patient-question").focus({ preventScroll: true });
     };
-    if (session.selectedAnswer) {
-      event.target.value = session.pending || "";
-      confirm(
-        "更換回答的問題？",
-        "目前的選擇與解析將清除，請重新選擇回答。",
-        apply,
-      );
-    } else apply();
+    apply();
     return;
   }
   if (

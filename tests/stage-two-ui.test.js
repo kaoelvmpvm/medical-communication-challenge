@@ -47,8 +47,11 @@ test("second-stage patient has one question banner, three accessible paper cards
   assert.ok(markup.includes('data-id="brief"'));
   assert.ok(markup.includes('data-id="overlong"'));
   for (const label of ["說得恰到好處", "說得太少", "說太多但沒用"]) {
-    assert.ok(!markup.includes(label), `Do not reveal category before confirming: ${label}`);
+    assert.ok(!markup.includes(label), `Student screen must never expose category: ${label}`);
   }
+  assert.ok(!markup.includes("確認回答"));
+  assert.ok(!markup.includes('data-action="submit-answer"'));
+  assert.ok(!markup.includes("answer-analysis"));
   session.selectedAnswer = "detail";
   const selectedHtml = patient(session, patientView(entry), options);
   assert.ok(selectedHtml.includes("✓ 已選擇"));
@@ -56,10 +59,15 @@ test("second-stage patient has one question banner, three accessible paper cards
   assert.ok(selectedHtml.includes('role="region" aria-live="polite"'));
   assert.ok(selectedHtml.includes('aria-pressed="true"'));
   assert.ok(selectedHtml.includes(options.find(item => item.id === "detail").text));
-  assert.ok(!selectedHtml.includes("說得恰到好處"), "Feedback category remains hidden until submitted");
+  for (const label of ["說得恰到好處", "說得太少", "說太多但沒用", "確認回答", "answer-analysis"]) {
+    assert.ok(!selectedHtml.includes(label), `Selected choice must not reveal ${label}`);
+  }
   session.submitted = true;
-  assert.ok(patient(session, patientView(entry), options).includes("說得恰到好處"));
-  assert.ok(patient(session, patientView(entry), options).includes("回答直接對應醫師的問題"));
+  const legacySubmittedHtml = patient(session, patientView(entry), options);
+  assert.ok(!legacySubmittedHtml.includes("answer-analysis"));
+  assert.ok(!legacySubmittedHtml.includes("確認回答"));
+  assert.ok(!legacySubmittedHtml.includes("說得恰到好處"));
+  assert.ok(!legacySubmittedHtml.includes("disabled"));
 });
 
 test("each case/question gives three distinct consistent and appropriately described speaking styles", () => {

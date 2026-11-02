@@ -411,10 +411,9 @@ test("five independent tablets, manual stage-two question selection, stage-three
     await expect(pages[4].locator(".stage-two-speech-choice")).toHaveCount(3);
     await pages[4].locator('[data-action="answer"][data-id="detail"]').click();
     await expect(pages[4].locator(".answer-analysis")).toHaveCount(0);
-    await pages[4].getByRole("button", { name: "確認回答" }).click();
-    await expect(pages[4].locator(".answer-analysis")).toContainText(
-      "具體且切合問題",
-    );
+    await expect(pages[4].locator('[data-action="submit-answer"]')).toHaveCount(0);
+    await expect(pages[4].locator(".stage-two-speech-detail")).toBeVisible();
+    await expect(pages[4].locator(".stage-two-speech-choice.is-selected")).toHaveCount(1);
     await expect(
       pages[0].locator(".history-panel,.body-note,.answer-analysis"),
     ).toHaveCount(0);
@@ -605,10 +604,8 @@ test("new cases answer source-based questions, preserve unknown facts and condit
     await expect(chosen).toContainText(entry.responses[topic]);
     await chosen.click();
     await expect(page.locator(".answer-analysis")).toHaveCount(0);
-    await page.getByRole("button", { name: "確認回答", exact: true }).click();
-    await expect(page.locator(".answer-analysis")).toContainText(
-      "具體且切合問題",
-    );
+    await expect(page.locator('[data-action="submit-answer"]')).toHaveCount(0);
+    await expect(page.locator(".stage-two-speech-detail")).toBeVisible();
     await layout(page);
     if (index === 6 || index === 10) {
       await axe(page);
@@ -634,10 +631,8 @@ test("new cases answer source-based questions, preserve unknown facts and condit
   await page.locator("#patient-question").selectOption("ears");
   await expect(page.locator('[data-id="detail"]')).toContainText("不確定");
   await page.locator('[data-id="detail"]').click();
-  await page.getByRole("button", { name: "確認回答", exact: true }).click();
-  await expect(page.locator(".answer-analysis")).toContainText(
-    "清楚說明資料不足",
-  );
+  await expect(page.locator(".answer-analysis")).toHaveCount(0);
+  await expect(page.locator(".stage-two-speech-detail")).toContainText("不確定");
   await startStudent(page, "doctor", 2, 1);
   if ((await page.locator(".candidate-details").getAttribute("open")) === null)
     await page.locator(".candidate-details summary").click();
@@ -774,8 +769,13 @@ test("stage-two handmade answer cards reveal full text only after selecting, wit
   await expect(page.locator(".stage-two-speech-detail")).toContainText("說法");
   await expect(page.locator(".answer-analysis")).toHaveCount(0);
   await expect(page.locator(".stage-two-speech-choice.is-selected")).toHaveCount(1);
-  await page.getByRole("button", { name: "確認回答", exact: true }).click();
-  await expect(page.locator(".answer-analysis")).toContainText("說太多但沒用");
+  await expect(page.locator('[data-action="submit-answer"]')).toHaveCount(0);
+  await expect(page.locator(".answer-analysis")).toHaveCount(0);
+  await page.locator('[data-action="answer"][data-id="brief"]').click();
+  await expect(page.locator(".stage-two-speech-choice.is-selected")).toHaveAttribute("data-id", "brief");
   await expect(page.locator(".stage-two-speech-detail")).toBeVisible();
+  await page.locator("#patient-question").selectOption("head");
+  await expect(page.locator(".stage-two-speech-detail")).toHaveCount(0);
+  await expect(page.locator(".stage-two-speech-choice.is-selected")).toHaveCount(0);
   await layout(page);
 });
