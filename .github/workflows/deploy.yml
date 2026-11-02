@@ -61,7 +61,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Verify all 17 deployed artwork URLs
+      - name: Verify all 20 deployed artwork URLs
         run: node scripts/verify-deployed-art.mjs "$PAGE_URL"
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
