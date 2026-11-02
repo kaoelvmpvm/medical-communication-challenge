@@ -642,222 +642,128 @@
   .candidates-panel .candidate { min-height: 74px; padding: 10px 12px; }
 }
 
-/* Stage 2 patient: three speech choices speaking toward one centered person. */
+/* Stage 2: original handmade paper cards, not oversized speech bubbles. */
 .stage-two-question-bar {
-  display: grid;
-  gap: 12px;
-  margin: 4px 0 26px;
-  padding: 23px clamp(16px, 3vw, 36px);
-  background: #4776c5;
-  border: 1px solid #27528e;
-  border-radius: 19px;
-  color: white;
-  box-shadow: 0 6px 15px #2c548322;
+  display: grid; gap: 10px; margin: 4px 0 24px;
+  padding: 20px clamp(16px,3vw,30px);
+  border: 1px solid #a9c3c7; border-radius: 18px;
+  background: #deebee; box-shadow: 0 5px 14px #314a5716;
+  color: #183f50;
 }
-.stage-two-question-bar label {
-  color: white;
-  font-size: clamp(18px, 2vw, 23px);
-  text-align: center;
-  font-weight: 750;
-  letter-spacing: .03em;
-}
+.stage-two-question-bar label { color: #1d505e; font-size: clamp(17px,2vw,22px); font-weight: 750; text-align: center; }
 .stage-two-question-bar select {
-  display: block;
-  width: min(100%, 940px);
-  min-width: 0;
-  min-height: 52px;
-  margin: 0 auto;
-  padding: 9px 15px;
-  border: 2px solid #ecf4ff;
-  border-radius: 10px;
-  background: white;
-  color: #183e70;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
+  display: block; width: min(100%,960px); min-width: 0; min-height: 50px;
+  margin: 0 auto; padding: 9px 14px; border: 2px solid #8aabae; border-radius: 11px;
+  background: #fffdf8; color: #223c4c; font-size: 16px; font-weight: 650; cursor: pointer;
 }
-.stage-two-question-bar select:focus-visible,
-.stage-two-speech-choice:focus-visible {
-  outline: 3px solid #ffbf47;
-  outline-offset: 4px;
+.stage-two-question-bar select:focus-visible, .stage-two-speech-choice:focus-visible {
+  outline: 3px solid #e1a741; outline-offset: 4px;
 }
-.stage-two-patient-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin: 8px 0 14px;
-}
-.stage-two-patient-heading h1 {
-  font-size: clamp(22px, 2.6vw, 30px);
-  margin: 4px 0 0;
-}
+.stage-two-patient-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin: 8px 0 8px; }
+.stage-two-patient-heading h1 { font-size: clamp(22px,2.6vw,30px); margin: 4px 0 0; }
 .stage-two-patient-heading .disease-code { flex-shrink: 0; }
-.stage-two-speech-board {
-  position: relative;
-  padding: 6px 0 0;
-}
+.paper-instruction { margin: 4px 0 18px; font-size: 15px; color: #655b4d; line-height: 1.6; }
+.stage-two-speech-board { position: relative; padding-top: 3px; }
 .stage-two-speech-choices {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(12px, 2.5vw, 34px);
-  align-items: stretch;
-  padding-inline: clamp(0px, 2vw, 24px);
+  display: grid; grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: clamp(12px,2vw,23px); align-items: stretch;
+  max-width: 1320px; margin-inline: auto;
 }
-.stage-two-speech-choice {
-  --bubble-blue: #4776c5;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 13px;
-  min-width: 0;
-  min-height: 282px;
-  height: 300px;
-  padding: 18px 16px 19px;
-  border: 2px solid #254d87;
-  border-radius: 34px;
-  background: var(--bubble-blue);
-  color: #fff;
-  font-family: inherit;
-  font-size: 17px;
-  line-height: 1.6;
-  text-align: center;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-  isolation: isolate;
-  transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+.stage-two-speech-choice.paper-choice {
+  position: relative; display: flex; flex-direction: column;
+  justify-content: flex-start; align-items: flex-start; gap: 12px;
+  min-width: 0; height: 220px; padding: 22px 20px 17px;
+  border: 2px solid #776550; border-radius: 17px 14px 21px 15px;
+  background-color: #fffbf1;
+  background-image: repeating-linear-gradient(0deg,transparent,transparent 28px,#b79d6e14 29px,#b79d6e14 30px),
+    linear-gradient(145deg,#fffef9 0%,#fff8e8 100%);
+  box-shadow: 3px 5px 0 #a6917040, 0 9px 17px #4b38231b;
+  color: #403527; font-family: inherit; text-align: left;
+  cursor: pointer; transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease;
+  overflow: visible;
 }
-.stage-two-speech-choice.speech-position-3 { --bubble-blue: #5899d2; }
-.stage-two-speech-choice::after {
-  content: "";
-  display: block;
-  position: absolute;
-  bottom: -78px;
-  width: 130px;
-  height: 80px;
-  background: var(--bubble-blue);
-  clip-path: polygon(0 0, 100% 0, 100% 100%);
-  z-index: 0;
+.stage-two-speech-choice.paper-choice::before {
+  content: ''; position: absolute; top: -10px; left: 50%;
+  width: 58px; height: 20px; transform: translateX(-50%) rotate(-2deg);
+  border-radius: 3px; background: #e3cda7b5; box-shadow: 0 1px 2px #4a351e14;
   pointer-events: none;
 }
-.stage-two-speech-choice > span { position: relative; z-index: 1; }
-.stage-two-speech-choice.speech-position-1::after { right: 0; }
-.stage-two-speech-choice.speech-position-2::after {
-  left: 45%;
-  width: 70px;
-  height: 65px;
-  bottom: -63px;
-  clip-path: polygon(0 0, 100% 0, 100% 100%);
+.stage-two-speech-choice.paper-choice::after { content: none; }
+.stage-two-speech-choice.paper-choice.speech-position-2 { border-color: #827456; }
+.stage-two-speech-choice.paper-choice.speech-position-3 { border-color: #8b7558; }
+.stage-two-speech-choice.paper-choice:not(.is-placeholder):hover:not(:disabled) {
+  transform: translateY(-3px); box-shadow: 4px 7px 0 #a6917040,0 12px 20px #4b382329;
 }
-.stage-two-speech-choice.speech-position-3::after {
-  left: 0;
-  transform: scaleX(-1);
+.stage-two-speech-choice.paper-choice.is-selected {
+  padding: 22px 20px 17px; border: 3px solid #338263;
+  background-color: #e6f1df;
+  background-image: repeating-linear-gradient(0deg,transparent,transparent 28px,#4287680e 29px,#4287680e 30px),
+    linear-gradient(145deg,#f3faeb 0%,#e4f0d8 100%);
+  box-shadow: 0 0 0 3px #b7d2b4, 4px 6px 0 #719a8150;
 }
-.stage-two-speech-choice.is-placeholder { cursor: default; }
-.stage-two-speech-choice:not(.is-placeholder):hover:not(:disabled) {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px #244f8329;
+.stage-two-speech-choice.paper-choice.is-selected::before { background: #add3b5c9; }
+.stage-two-speech-choice.paper-choice:disabled { opacity: 1; cursor: default; }
+.stage-two-speech-choice .speech-choice-number {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 30px;
+  padding: 3px 12px; border-radius: 30px;
+  background: #efe2c9; color: #645039; font-size: 14px; font-weight: 750;
 }
-.stage-two-speech-choice.is-selected {
-  --bubble-blue: #235994;
-  border: 4px solid #ffbd49;
-  padding: 18px 17px 20px;
-  box-shadow: 0 0 0 3px #ffd8896e, 0 8px 20px #17487a30;
+.stage-two-speech-choice.is-selected .speech-choice-number { background: #cfe7ce; color: #265e49; }
+.stage-two-speech-choice .speech-choice-text {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; width: 100%; max-height: none; padding: 0;
+  font-size: clamp(15px,1.35vw,17px); font-weight: 600; line-height: 1.65;
+  text-align: left; overflow-wrap: anywhere; white-space: normal;
 }
-.stage-two-speech-choice:disabled { opacity: 1; cursor: default; }
-.speech-choice-number {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 3px 12px;
-  background: #ffffff24;
-  border-radius: 100px;
-  font-size: 14px;
-  font-weight: 750;
+.stage-two-speech-choice .speech-choice-state {
+  margin-top: auto; padding-top: 3px; color: #7c674b; font-size: 13px; font-weight: 750;
 }
-.speech-choice-text {
-  display: block;
-  width: 100%;
-  min-height: 0;
-  max-height: 205px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #dceafd66 transparent;
-  padding: 0 5px;
-  font-weight: 600;
-  font-size: clamp(15px, 1.5vw, 18px);
+.stage-two-speech-choice.is-selected .speech-choice-state { color: #246b4e; }
+.stage-two-speech-choice.is-placeholder { cursor: default; justify-content: center; align-items: center; }
+.speech-placeholder-text { color: #837667; font-size: 14px; text-align: center; }
+.stage-two-speech-detail {
+  max-width: 1040px; margin: 24px auto 0; padding: 20px clamp(16px,3vw,28px);
+  border: 2px solid #b9a582; border-radius: 16px 20px 17px 14px;
+  background: #fffdf5; box-shadow: 3px 4px 0 #c8b69145;
+  overflow-wrap: anywhere;
 }
-.speech-choice-state { font-size: 13px; color: #f0f6ff; }
+.speech-detail-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.speech-detail-heading h2 { margin: 0; font-size: 19px; color: #5b4834; }
+.speech-detail-heading span { color: #38765b; font-size: 13px; font-weight: 700; }
+.stage-two-speech-detail p { margin: 0; color: #352f27; font-size: 17px; line-height: 1.85; white-space: normal; }
 .stage-two-person.case-art {
-  display: block;
-  width: min(270px, 48vw);
-  max-width: 100%;
-  height: auto;
-  margin: 52px auto 10px;
-  padding: 0;
-  border: 0;
-  border-radius: 19px;
-  background: transparent;
-  box-shadow: none;
-  color: #142a40;
+  display: block; width: min(248px,48vw); max-width: 100%; height: auto;
+  margin: 28px auto 10px; padding: 0; border: 0; border-radius: 19px;
+  background: transparent; box-shadow: none;
 }
 .stage-two-person .case-art-frame {
-  aspect-ratio: 4 / 5;
-  width: 100%;
-  overflow: hidden;
-  border: 3px solid #fff;
-  border-radius: 18px;
-  background: #f8f4e9;
-  box-shadow: 0 10px 25px #1b345329;
+  aspect-ratio: 4 / 5; width: 100%; overflow: hidden;
+  border: 4px solid #fff8ea; border-radius: 16px;
+  background: #faf1de; box-shadow: 0 8px 20px #3c32262b;
 }
-.stage-two-person .case-art-frame img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.stage-two-person .case-art-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.stage-two-person .art-placeholder { aspect-ratio: 4 / 5; min-height: 180px; }
+.stage-two-choice-hint { text-align: center; color: #675a48; margin: 17px 0; font-size: 15px; }
+.stage-two-patient .answer-submit { justify-content: center; margin-top: 12px; }
+.stage-two-patient .answer-analysis { max-width: 1040px; margin: 20px auto 10px; }
+@media (max-width: 850px) {
+  .stage-two-speech-choices { gap: 11px; }
+  .stage-two-speech-choice.paper-choice { height: 216px; padding: 19px 13px 13px; }
+  .stage-two-speech-choice.paper-choice.is-selected { padding: 19px 13px 13px; }
+  .stage-two-speech-choice .speech-choice-text { font-size: 15px; }
 }
-.stage-two-person .art-placeholder {
-  aspect-ratio: 4 / 5;
-  min-height: 200px;
-}
-.stage-two-choice-hint {
-  text-align: center;
-  color: #516577;
-  margin: 16px 0;
-  font-size: 15px;
-}
-.stage-two-patient .answer-submit { justify-content: center; margin-top: 15px; }
-.stage-two-patient .answer-analysis { max-width: 900px; margin: 22px auto 10px; }
-@media (min-width: 761px) and (max-width: 1050px) {
-  .stage-two-speech-choices { gap: 13px; padding: 0; }
-  .stage-two-speech-choice { padding: 14px 12px; min-height: 260px; height: 290px; border-radius: 24px; }
-  .speech-choice-text { font-size: 15px; }
-}
-@media (max-width: 760px) {
-  .stage-two-question-bar { padding: 17px 13px; border-radius: 14px; }
+@media (max-width: 690px) {
+  .stage-two-question-bar { padding: 16px 12px; border-radius: 14px; }
   .stage-two-question-bar select { font-size: 15px; }
-  .stage-two-speech-choices { grid-template-columns: 1fr; gap: 14px; padding-inline: 0; }
-  .stage-two-speech-choice {
-    min-height: 120px;
-    height: auto;
-    max-height: 265px;
-    padding: 16px 16px;
-    border-radius: 20px;
-    gap: 8px;
-  }
-  .stage-two-speech-choice .speech-choice-text {
-    max-height: 164px;
-  }
-  .stage-two-speech-choice.is-selected { padding: 14px; }
-  .stage-two-speech-choice::after { display: none; }
-  .stage-two-person.case-art { margin-top: 18px; width: min(240px, 68vw); }
-  .stage-two-patient-heading .disease-code { padding: 7px 11px; }
+  .stage-two-speech-choices { grid-template-columns: 1fr; gap: 19px; }
+  .stage-two-speech-choice.paper-choice { height: 158px; min-height: 158px; padding: 15px 17px 13px; gap: 9px; }
+  .stage-two-speech-choice.paper-choice.is-selected { padding: 15px 17px 13px; }
+  .stage-two-speech-choice .speech-choice-text { -webkit-line-clamp: 2; }
+  .stage-two-person.case-art { width: min(230px,68vw); margin-top: 22px; }
+  .stage-two-speech-detail { padding: 16px 15px; }
+  .stage-two-speech-detail p { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .stage-two-speech-choice { transition: none; }
-  .stage-two-speech-choice:hover { transform: none; }
+  .stage-two-speech-choice.paper-choice { transition: none; }
+  .stage-two-speech-choice.paper-choice:hover { transform: none; }
 }

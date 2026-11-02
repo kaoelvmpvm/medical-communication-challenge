@@ -6,7 +6,7 @@ import { createIndependentSession } from "../src/game/engine.js";
 import { patient } from "../src/ui/screens.js";
 import { patientQuestions } from "../src/ui/portal.js";
 
-test("second-stage patient has one question banner, three speech bubbles, and a central person", () => {
+test("second-stage patient has one question banner, three accessible paper cards and a central illustration", () => {
   const entry = cases[6];
   const session = createIndependentSession("patient", 2, 1, 6);
   const picker = patientQuestions(session, entry.id);
@@ -38,6 +38,11 @@ test("second-stage patient has one question banner, three speech bubbles, and a 
   assert.equal(options.length, 3);
   const markup = patient(session, patientView(entry), options);
   assert.equal((markup.match(/data-action="answer"/g) || []).length, 3);
+  assert.equal((markup.match(/class="stage-two-speech-choice paper-choice/g) || []).length, 3);
+  assert.ok(markup.includes("點選閱讀全文"));
+  assert.ok(markup.includes('aria-controls="selected-speech-detail"'));
+  assert.ok(!markup.includes('class="stage-two-speech-detail"'), "No full answer panel before selecting");
+  assert.ok(markup.includes('class="stage-two-person case-art"'));
   assert.ok(markup.includes('data-id="detail"'));
   assert.ok(markup.includes('data-id="brief"'));
   assert.ok(markup.includes('data-id="overlong"'));
@@ -45,7 +50,13 @@ test("second-stage patient has one question banner, three speech bubbles, and a 
     assert.ok(!markup.includes(label), `Do not reveal category before confirming: ${label}`);
   }
   session.selectedAnswer = "detail";
-  assert.ok(patient(session, patientView(entry), options).includes("✓ 已選擇"));
+  const selectedHtml = patient(session, patientView(entry), options);
+  assert.ok(selectedHtml.includes("✓ 已選擇"));
+  assert.ok(selectedHtml.includes('class="stage-two-speech-detail"'));
+  assert.ok(selectedHtml.includes('role="region" aria-live="polite"'));
+  assert.ok(selectedHtml.includes('aria-pressed="true"'));
+  assert.ok(selectedHtml.includes(options.find(item => item.id === "detail").text));
+  assert.ok(!selectedHtml.includes("說得恰到好處"), "Feedback category remains hidden until submitted");
   session.submitted = true;
   assert.ok(patient(session, patientView(entry), options).includes("說得恰到好處"));
   assert.ok(patient(session, patientView(entry), options).includes("具體且切合問題"));

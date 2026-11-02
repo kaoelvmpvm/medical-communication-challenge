@@ -750,3 +750,32 @@ test("doctor candidate board stays aligned across tablet and desktop widths", as
   const columns2 = await page.locator(".candidate-grid").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
   expect(columns2).toBe(expectedCols);
 });
+
+test("stage-two handmade answer cards reveal full text only after selecting, without internal scrolling", async ({ page }) => {
+  await startStudent(page, "patient", 2, 1, 6);
+  await page.locator("#patient-question").selectOption("eyes");
+  const cards = page.locator(".stage-two-speech-choice.paper-choice");
+  await expect(cards).toHaveCount(3);
+  await expect(page.locator(".stage-two-speech-detail")).toHaveCount(0);
+  await expect(page.locator(".stage-two-person.case-art img")).toBeVisible();
+  const gridColumns = await page.locator(".stage-two-speech-choices")
+    .evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  expect(gridColumns).toBe(page.viewportSize().width <= 690 ? 1 : 3);
+  const appearance = await cards.first().evaluate(el => ({
+    color: getComputedStyle(el).backgroundColor,
+    tail: getComputedStyle(el, "::after").content,
+    overflow: getComputedStyle(el.querySelector(".speech-choice-text")).overflowY,
+  }));
+  expect(appearance.color).not.toBe("rgb(71, 118, 197)");
+  expect(appearance.tail).toBe("none");
+  expect(appearance.overflow).not.toBe("auto");
+  await page.locator('[data-action="answer"][data-id="overlong"]').click();
+  await expect(page.locator(".stage-two-speech-detail")).toBeVisible();
+  await expect(page.locator(".stage-two-speech-detail")).toContainText("說法");
+  await expect(page.locator(".answer-analysis")).toHaveCount(0);
+  await expect(page.locator(".stage-two-speech-choice.is-selected")).toHaveCount(1);
+  await page.getByRole("button", { name: "確認回答", exact: true }).click();
+  await expect(page.locator(".answer-analysis")).toContainText("說太多但沒用");
+  await expect(page.locator(".stage-two-speech-detail")).toBeVisible();
+  await layout(page);
+});
