@@ -42,5 +42,5 @@ test("footer release label derives from the package version", () => {
     displayVersion,
     `V${pkg.version.split(".").slice(0, 2).join(".")}`,
   );
-  assert.equal(displayVersion, "V1.6");
+  assert.equal(displayVersion, "V2.0");
 });
