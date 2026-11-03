@@ -64,6 +64,10 @@ test("P1 teacher still has PIN and no third stage tab",async({page})=>{
   await page.locator("#teacher-pin").fill("0709");
   await page.locator("#login-form button[type=submit]").click();
   await expect(page.getByRole("heading",{name:"教室紀錄中心"})).toBeVisible();
+  // The teacher workspace tabs are shown only after a class exists.
+  await page.locator('#class-form input[name="className"]').fill("815");
+  await page.locator('#class-form button[type="submit"]').click();
+  await expect(page.locator('[data-action="t-section"][data-section="plans"]')).toBeVisible();
   await expect(page.locator('[data-action="t-stage"][data-stage="3"]')).toHaveCount(0);
   await page.locator('[data-action="t-section"][data-section="plans"]').click();
   await expect(page.locator('[data-action="t-stage"][data-stage="3"]')).toHaveCount(0);
