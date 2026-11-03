@@ -200,7 +200,9 @@ export class TeacherApp {
       return;
     }
     if (action === "t-stage") {
-      this.stage = Number(target.dataset.stage);
+      const requested = Number(target.dataset.stage);
+      if (![1, 2].includes(requested)) return;
+      this.stage = requested;
       this.draw();
       return;
     }
